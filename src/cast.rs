@@ -2,8 +2,10 @@ use md5::{Digest, Md5};
 use rust_cast::{CastDevice, ChannelMessage};
 use rust_cast::channels::heartbeat::HeartbeatResponse;
 use rust_cast::channels::receiver::{Application, CastDeviceApp, ReceiverResponse};
-use rust_cast::message_manager::CastMessagePayload;
+use rust_cast::message_manager::{CastMessage, CastMessagePayload};
 use serde::{Deserialize, Serialize};
+use models::Message;
+use crate::spotify::models;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlaybackSession {
@@ -54,7 +56,6 @@ const SPOTIFY_APP_ID: &'static str = "CC32E753";
 pub struct Spotify {
     device: CastDevice<'static>,
     app: Application,
-    launched: bool,
 }
 
 impl Spotify {
@@ -63,28 +64,13 @@ impl Spotify {
         device.connection.connect(DEFAULT_RECEIVER)?;
 
         let app = device.receiver.launch_app(&CastDeviceApp::Custom(SPOTIFY_APP_ID.to_string()))?;
-        let mut launched = false;
 
         device.connection.connect(app.transport_id.as_str())?;
-        match device.receive()? {
-            ChannelMessage::Receiver(ReceiverResponse::Status(_)) => (),
-            ChannelMessage::Receiver(ReceiverResponse::NotImplemented(message_type, _)) if message_type.as_str() == "LAUNCH_STATUS" => {
-                launched = true;
-            },
-            message => {
-                debug(message);
-                return Err(rust_cast::errors::Error::Internal("Failed to receive status message from Chromecast".to_string()))
-            }
-        }
 
-        Ok(Spotify { device, app, launched })
+        Ok(Spotify { device, app })
     }
 
     pub fn login(&mut self, token: String) -> Result<(), rust_cast::errors::Error> {
-        if self.launched {
-            return Ok(());
-        }
-
         self.device.receiver.broadcast_message("urn:x-cast:com.spotify.chromecast.secure.v1",
                                           &serde_json::json!({
                                               "type": "addUser",
@@ -96,19 +82,27 @@ impl Spotify {
         )?;
 
         match self.receive()? {
-            ChannelMessage::Raw(message) => {
-                match message.payload {
-                    CastMessagePayload::String(payload) => {
-                        let response: GetInfoResponse = serde_json::from_str(&payload)?;
-                        println!("{:?}", response);
+            ChannelMessage::Raw(CastMessage { payload: CastMessagePayload::String(payload), .. }) => {
+                let message = serde_json::from_str::<Message>(&payload)?;
+                match message.r#type.as_str() {
+                    "addUserError" => {
+                        Err(rust_cast::errors::Error::Internal(payload))
+                    }
+                    _ => {
+                        println!("{}", payload);
                         Ok(())
                     }
-                    CastMessagePayload::Binary(_) => Err(rust_cast::errors::Error::Internal("Received unsupported raw message from Chromecast".to_string()))
                 }
             },
-            m => {
-                debug(m);
-                Err(rust_cast::errors::Error::Internal("Failed to receive raw message from Chromecast".to_string()))
+            ChannelMessage::Receiver(ReceiverResponse::NotImplemented(kind, message)) => {
+                match kind.as_str() {
+                    "LAUNCH_STATUS" => Ok(()),
+                    _ => Err(rust_cast::errors::Error::Internal(format!("Received not implemented message from Chromecast: {:?}", message)))
+                }
+
+            }
+            message => {
+                Err(rust_cast::errors::Error::Internal(format!("Failed to receive raw message from Chromecast: {:?}", message)))
             }
         }
     }
@@ -139,9 +133,8 @@ impl Spotify {
                     CastMessagePayload::Binary(_) => Err(rust_cast::errors::Error::Internal("Received unsupported raw message from Chromecast".to_string()))
                 }
             },
-            m => {
-                debug(m);
-                Err(rust_cast::errors::Error::Internal("Failed to receive raw message from Chromecast".to_string()))
+            message => {
+                Err(rust_cast::errors::Error::Internal(format!("Failed to receive raw message from Chromecast: {:?}", message)))
             }
         }
     }
@@ -157,28 +150,11 @@ impl Spotify {
                     self.device.heartbeat.pong()?;
                     continue;
                 }
-                ChannelMessage::Receiver(ReceiverResponse::Status(s)) => {
-                    println!("{:?}", s);
+                ChannelMessage::Receiver(ReceiverResponse::Status(_)) => {
                     continue;
                 }
                 message => return Ok(message)
             }
         }
-    }
-}
-
-fn debug(message: ChannelMessage) {
-    match message {
-        ChannelMessage::Heartbeat(response) => {
-            println!("[Heartbeat] {:?}", response);
-        }
-
-        ChannelMessage::Connection(response) => println!("[Connection] {:?}", response),
-        ChannelMessage::Media(response) => println!("[Media] {:?}", response),
-        ChannelMessage::Receiver(response) => println!("[Receiver] {:?}", response),
-        ChannelMessage::Raw(response) => println!(
-            "Support for the following message type is not yet supported: {:?}",
-            response
-        ),
     }
 }

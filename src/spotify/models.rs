@@ -172,3 +172,10 @@ pub struct DeviceAuthorizationRequest {
     #[serde(rename = "deviceId")]
     pub device_id: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Message {
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub payload: serde_json::Value,
+}

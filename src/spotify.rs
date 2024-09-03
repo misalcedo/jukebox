@@ -19,14 +19,6 @@ impl Client {
         self.oauth.token()
     }
 
-    pub fn me(&mut self) -> Result<models::User> {
-        self.http.get("https://api.spotify.com/v1/me")
-            .header("Authorization",  self.oauth.authorization())
-            .send()?
-            .error_for_status()?
-            .json()
-    }
-
     pub fn get_available_devices(&mut self) -> Result<models::DeviceList> {
         self.http.get("https://api.spotify.com/v1/me/player/devices")
             .header("Authorization",  self.oauth.authorization())
@@ -45,8 +37,9 @@ impl Client {
         Ok(())
     }
 
-    pub fn play(&mut self, request: &StartPlaybackRequest) -> Result<()> {
+    pub fn play(&mut self, device_id: Option<String>, request: &StartPlaybackRequest) -> Result<()> {
         self.http.put("https://api.spotify.com/v1/me/player/play")
+            .query(&[("device_id", device_id)])
             .header("Authorization",  self.oauth.authorization())
             .json(request)
             .send()?
