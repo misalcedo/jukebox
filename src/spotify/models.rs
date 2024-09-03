@@ -71,14 +71,15 @@ pub struct Offset {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StartPlaybackRequest {
-    pub context_uri: String,
-    pub offset: Offset,
+    pub context_uri: Option<String>,
+    pub uris: Vec<String>,
+    pub offset: Option<Offset>,
     pub position_ms: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Disallows {
-    pub resuming: bool
+    pub resuming: Option<bool>
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -106,7 +107,6 @@ struct Restrictions {
 pub struct Album {
     pub album_type: String,
     pub total_tracks: i64,
-    pub available_markets: Vec<String>,
     pub external_urls: ExternalUrls,
     pub href: String,
     pub id: String,
@@ -156,7 +156,7 @@ pub struct PlaybackState {
     pub device: Device,
     pub repeat_state: String,
     pub shuffle_state: bool,
-    pub context: Context,
+    pub context: Option<Context>,
     pub timestamp: i64,
     pub progress_ms: i64,
     pub is_playing: bool,

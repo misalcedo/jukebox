@@ -42,12 +42,11 @@ impl Client {
         self.http.put("https://api.spotify.com/v1/me/player/play")
             .header("Authorization",  self.oauth.token())
             .json(request)
-            .send()
-            .and_then(Response::json)
+            .send().map(|_| ())
 
     }
 
-    pub fn get_playback_state(&mut self) -> Result<models::PlaybackState> {
+    pub fn get_playback_state(&mut self) -> Result<PlaybackState> {
         self.http.get("https://api.spotify.com/v1/me/player")
             .header("Authorization",  self.oauth.token())
             .send()

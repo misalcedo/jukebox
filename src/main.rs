@@ -1,4 +1,5 @@
 use std::env;
+use crate::spotify::models::{Offset, StartPlaybackRequest};
 
 slint::include_modules!();
 
@@ -24,5 +25,12 @@ fn main() {
     let state = client.get_playback_state().expect("Failed to get playback state");
 
     println!("{state:?}");
+    
+    client.play(&StartPlaybackRequest {
+        context_uri: None,
+        offset: None,
+        uris: vec!["spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()],
+        position_ms: 0,
+    }).expect("Failed to play");
 
 }
