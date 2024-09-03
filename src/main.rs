@@ -16,4 +16,13 @@ fn main() {
     let me = client.me().expect("Failed to load user");
 
     println!("{me:?}");
+
+    let devices = client.get_available_devices().expect("Failed to load devices");
+
+    println!("{devices:?}");
+
+    let state = client.get_playback_state().expect("Failed to get playback state");
+
+    println!("{state:?}");
+
 }
