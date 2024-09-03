@@ -1,3 +1,4 @@
+use std::io;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::http_client;
 use oauth2::{AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl};
@@ -5,7 +6,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use tokio::io;
 use url::Url;
 
 pub struct Client {
@@ -45,12 +45,25 @@ impl Client {
         }
     }
 
+    pub fn client_id(&self) -> String {
+        self.client.client_id().to_string()
+    }
+
     pub fn token(&mut self) -> String {
+        self.refresh();
+        self.token.access_token().secret().to_string()
+    }
+
+    fn refresh(&mut self) {
         if self.deadline < Instant::now() {
             self.token = refresh(&self.client, &self.token).expect("Failed to refresh the token.");
             self.deadline = Instant::now() + self.token.expires_in().unwrap_or_default();
             save(&self.path, &self.token).expect("Failed to save the token.");
         }
+    }
+
+    pub fn authorization(&mut self) -> String {
+        self.refresh();
 
         let secret = self.token.access_token().secret();
 

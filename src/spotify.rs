@@ -1,7 +1,6 @@
-use std::io::Read;
-use reqwest::{Result, blocking::Response};
-use crate::spotify::models::{DeviceIdList, PlaybackState, StartPlaybackRequest};
+use crate::spotify::models::{DeviceAuthorizationRequest, DeviceIdList, PlaybackState, StartPlaybackRequest};
 use crate::token;
+use reqwest::Result;
 
 pub mod models;
 
@@ -16,41 +15,65 @@ impl Client {
         Client { oauth, http }
     }
 
+    pub fn token(&mut self) -> String {
+        self.oauth.token()
+    }
+
     pub fn me(&mut self) -> Result<models::User> {
         self.http.get("https://api.spotify.com/v1/me")
-            .header("Authorization",  self.oauth.token())
-            .send()
-            .and_then(Response::json)
+            .header("Authorization",  self.oauth.authorization())
+            .send()?
+            .error_for_status()?
+            .json()
     }
 
     pub fn get_available_devices(&mut self) -> Result<models::DeviceList> {
         self.http.get("https://api.spotify.com/v1/me/player/devices")
-            .header("Authorization",  self.oauth.token())
-            .send()
-            .and_then(Response::json)
+            .header("Authorization",  self.oauth.authorization())
+            .send()?
+            .error_for_status()?
+            .json()
     }
 
     pub fn transfer_playback(&mut self, devices: &DeviceIdList) -> Result<()> {
         self.http.put("https://api.spotify.com/v1/me/player")
-            .header("Authorization",  self.oauth.token())
+            .header("Authorization", self.oauth.authorization())
             .json(devices)
-            .send()
-            .and_then(Response::json)
+            .send()?
+            .error_for_status()?;
+
+        Ok(())
     }
 
     pub fn play(&mut self, request: &StartPlaybackRequest) -> Result<()> {
         self.http.put("https://api.spotify.com/v1/me/player/play")
-            .header("Authorization",  self.oauth.token())
+            .header("Authorization",  self.oauth.authorization())
             .json(request)
-            .send().map(|_| ())
+            .send()?
+            .error_for_status()?;
 
+        Ok(())
     }
 
     pub fn get_playback_state(&mut self) -> Result<PlaybackState> {
         self.http.get("https://api.spotify.com/v1/me/player")
-            .header("Authorization",  self.oauth.token())
-            .send()
-            .and_then(Response::json)
+            .header("Authorization",  self.oauth.authorization())
+            .send()?
+            .error_for_status()?
+            .json()
+    }
 
+    pub fn enable_device(&mut self, device_id: String) -> Result<()> {
+        self.http.post("https://spclient.wg.spotify.com/device-auth/v1/refresh")
+            .header("Authority", "spclient.wg.spotify.com")
+            .header("Authorization",  self.oauth.authorization())
+            .json(&DeviceAuthorizationRequest {
+                client_id: self.oauth.client_id(),
+                device_id,
+            })
+            .send()?
+            .error_for_status()?;
+
+        Ok(())
     }
 }

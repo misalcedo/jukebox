@@ -88,7 +88,7 @@ pub struct Actions {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Artist {
+pub struct Artist {
     pub external_urls: ExternalUrls,
     pub href: String,
     pub id: String,
@@ -99,7 +99,7 @@ struct Artist {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Restrictions {
+pub struct Restrictions {
     pub reason: String,
 }
 
@@ -163,4 +163,12 @@ pub struct PlaybackState {
     pub item: Item,
     pub currently_playing_type: String,
     pub actions: Actions,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeviceAuthorizationRequest {
+    #[serde(rename = "clientId")]
+    pub client_id: String,
+    #[serde(rename = "deviceId")]
+    pub device_id: String,
 }

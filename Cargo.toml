@@ -4,14 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.7.5" }
+hex = "0.4.3"
+md-5 = "0.11.0-pre.4"
 oauth2 = { version = "4.4.2", features = ["reqwest"] }
 reqwest = { version = "0.12.5", features = ["json", "blocking"] }
+rust_cast = { version = "0.19.0" }
 serde = { version = "1.0.209", features = ["derive"]}
 serde_json = "1.0.92"
-slint = { version = "1.7.2" }
-tokio = { version = "1.38.0", features = ["full"] }
 url = "2.5.2"
-
-[build-dependencies]
-slint-build = "1.7.2"
