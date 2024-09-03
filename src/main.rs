@@ -1,50 +1,19 @@
+use std::env;
+
 slint::include_modules!();
 
-use reqwest;
-use serde::{Deserialize, Serialize};
+mod spotify;
+mod token;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Track {
-    id: String,
-    name: String,
-    artists: Vec<Artist>,
-}
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Artist {
-    name: String,
-}
+fn main() {
+    let client_id = env::var("CLIENT_ID").expect("Missing the CLIENT_ID environment variable.");
+    let token_path = env::var("TOKEN").expect("Missing the TOKEN_PATH environment variable.");
 
-#[derive(Debug, Serialize, Deserialize)]
-struct SearchResult {
-    tracks: Tracks,
-}
+    let oauth = token::Client::new(client_id, token_path);
+    let mut client = spotify::Client::new(oauth);
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Tracks {
-    items: Vec<Track>,
-}
+    let me = client.me().expect("Failed to load user");
 
-async fn search_tracks(query: &str) -> Result<SearchResult, Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let url = format!("https://api.spotify.com/v1/search?q={}&type=track", query);
-
-    let response = client.get(url).send().await?;
-    let search_result: SearchResult = response.json().await?;
-
-    Ok(search_result)
-}
-
-fn main() -> Result<(), slint::PlatformError>  {
-    let ui = AppWindow::new()?;
-
-    ui.on_request_increase_value({
-        let ui_handle = ui.as_weak();
-        move || {
-            let ui = ui_handle.unwrap();
-            ui.set_counter(ui.get_counter() + 1);
-        }
-    });
-
-    ui.run()
+    println!("{me:?}");
 }
