@@ -16,9 +16,8 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(client_id: String, path: String) -> Self {
+    pub fn new(client_id: String, path: PathBuf) -> Self {
         let client_id = ClientId::new(client_id);
-        let path = PathBuf::from(path);
 
         let auth_url = AuthUrl::new("https://accounts.spotify.com/authorize".to_string()).expect("Invalid authorization endpoint URL");
         let token_url = TokenUrl::new("https://accounts.spotify.com/api/token".to_string()).expect("Invalid token endpoint URL");
@@ -43,15 +42,6 @@ impl Client {
             token,
             deadline,
         }
-    }
-
-    pub fn client_id(&self) -> String {
-        self.client.client_id().to_string()
-    }
-
-    pub fn token(&mut self) -> String {
-        self.refresh();
-        self.token.access_token().secret().to_string()
     }
 
     fn refresh(&mut self) {

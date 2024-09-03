@@ -1,30 +1,30 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Image {
     pub url: String,
     pub height: i64,
     pub width: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Followers {
     pub href: Option<String>,
     pub total: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ExternalUrls {
     pub spotify: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ExplicitContent {
     pub filter_enabled: bool,
     pub filter_locked: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct User {
     pub country: String,
     pub display_name: String,
@@ -41,7 +41,7 @@ pub struct User {
     pub uri: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Device {
     pub id: String,
     pub is_active: bool,
@@ -54,22 +54,22 @@ pub struct Device {
     pub supports_volume: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DeviceList {
     pub devices: Vec<Device>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DeviceIdList {
     pub device_ids: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Offset {
     pub position: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StartPlaybackRequest {
     pub context_uri: Option<String>,
     pub uris: Vec<String>,
@@ -77,17 +77,17 @@ pub struct StartPlaybackRequest {
     pub position_ms: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Disallows {
     pub resuming: Option<bool>
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Actions {
     pub disallows: Disallows
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Artist {
     pub external_urls: ExternalUrls,
     pub href: String,
@@ -98,12 +98,12 @@ pub struct Artist {
     pub uri: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Restrictions {
     pub reason: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Album {
     pub album_type: String,
     pub total_tracks: i64,
@@ -121,7 +121,7 @@ pub struct Album {
     pub artists: Vec<Artist>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Item {
     pub album: Album,
     pub artists: Vec<Artist>,
@@ -142,7 +142,7 @@ pub struct Item {
     pub is_local: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Context {
     #[serde(rename = "type")]
     pub r#type: String,
@@ -151,31 +151,10 @@ pub struct Context {
     pub uri: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PlaybackState {
-    pub device: Device,
-    pub repeat_state: String,
-    pub shuffle_state: bool,
-    pub context: Option<Context>,
-    pub timestamp: i64,
-    pub progress_ms: i64,
-    pub is_playing: bool,
-    pub item: Item,
-    pub currently_playing_type: String,
-    pub actions: Actions,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DeviceAuthorizationRequest {
-    #[serde(rename = "clientId")]
-    pub client_id: String,
-    #[serde(rename = "deviceId")]
-    pub device_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Message {
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct SearchRequest {
+    pub q: String,
     #[serde(rename = "type")]
     pub r#type: String,
-    pub payload: serde_json::Value,
+    pub offset: String
 }

@@ -1,40 +1,127 @@
-use std::env;
+use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+use clap::{Parser, Subcommand, ValueEnum};
+use crate::spotify::models::{SearchRequest, StartPlaybackRequest};
 
 mod spotify;
 mod token;
 
+#[derive(Debug, Parser)]
+#[command(author, version, about, long_about)]
+struct Arguments {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    Groove(Groove),
+    Write(Write),
+    Read(Read),
+    Search(Search)
+}
+
+#[derive(Debug, Parser)]
+struct Groove {
+    #[arg(short, long, env = "JUKEBOX_CLIENT_ID")]
+    client_id: String,
+
+    #[arg(short, long, env = "JUKEBOX_TOKEN_CACHE")]
+    token_cache: PathBuf,
+
+    #[arg(short, long)]
+    device: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+struct Write {
+    #[arg(short, long)]
+    value: String,
+}
+
+#[derive(Debug, Parser)]
+struct Read {
+}
+
+#[derive(Debug, Parser)]
+struct Search {
+    #[arg(short, long, env = "JUKEBOX_CLIENT_ID")]
+    client_id: String,
+
+    #[arg(short, long, env = "JUKEBOX_TOKEN_CACHE")]
+    token_cache: PathBuf,
+
+    #[arg(short, long)]
+    query: String,
+
+    #[arg(short, long)]
+    kind: SearchKind,
+
+    #[arg(short, long, default_value_t = 0)]
+    offset: usize
+}
+
+#[derive(Clone, Debug, ValueEnum, Default)]
+enum SearchKind {
+    Album,
+    Artist,
+    Playlist,
+    #[default]
+    Track,
+    Show,
+    Episode,
+    Audiobook
+}
+
+impl Display for SearchKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Album => write!(f, "album"),
+            Self::Artist => write!(f, "artist"),
+            Self::Playlist => write!(f, "playlist"),
+            Self::Track => write!(f, "track"),
+            Self::Show => write!(f, "show"),
+            Self::Episode => write!(f, "episode"),
+            Self::Audiobook => write!(f, "audiobook"),
+        }
+    }
+}
+
 fn main() {
-    let client_id = env::var("CLIENT_ID").expect("Missing the CLIENT_ID environment variable.");
-    let token_path = env::var("TOKEN").expect("Missing the TOKEN_PATH environment variable.");
+    let arguments = Arguments::parse();
 
-    let oauth = token::Client::new(client_id, token_path);
-    let mut client = spotify::Client::new(oauth);
-    let mut spotify = cast::Spotify::new("192.168.1.22", 8009).expect("Failed to connect to Chromecast");
+    match arguments.command {
+        Commands::Groove(groove) => {
+            let oauth = token::Client::new(groove.client_id, groove.token_cache);
+            let mut client = spotify::Client::new(oauth);
 
-    let device_id = spotify.device_id().expect("Failed to get device id");
-    println!("Device id: {}", device_id);
+            let device = client.get_available_devices().unwrap_or_default().devices.into_iter().find(|device| {
+                match &groove.device {
+                    None => true,
+                    Some(name) => &device.name == name
+                }
+            }).expect("Failed to find a device.");
 
-    spotify.login(client.token()).expect("Failed to login to Spotify");
+            client.play(Some(device.id), &StartPlaybackRequest {
+                context_uri: None,
+                offset: None,
+                uris: vec!["spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()],
+                position_ms: 0,
+            }).expect("Failed to play");
+        }
+        Commands::Write(_) => {}
+        Commands::Read(_) => {}
+        Commands::Search(search) => {
+            let oauth = token::Client::new(search.client_id, search.token_cache);
+            let mut client = spotify::Client::new(oauth);
 
-    // client.enable_device("a16207e6e05f6f9ac1cee93e0e3ad3c0".to_string());//.expect("Failed to enable device");
-    // client.transfer_playback(&DeviceIdList {
-    //     device_ids: vec![device_id]
-    // }).expect("Failed to transfer playback");
-    //
-    spotify.stop().expect("Failed to stop Spotify");
 
-    let devices = client.get_available_devices().expect("Failed to load devices");
+            client.search(&SearchRequest {
+                q: search.query,
+                r#type: search.kind.to_string(),
+                offset: search.offset.to_string(),
+            }).expect("Failed to play");
+        }
+    }
 
-    println!("{devices:?}");
-
-    // let state = client.get_playback_state().expect("Failed to get playback state");
-
-    // println!("{state:?}");
-    // Some("a16207e6e05f6f9ac1cee93e0e3ad3c0".to_string())
-    // client.play(Some("a16207e6e05f6f9ac1cee93e0e3ad3c0".to_string()), &StartPlaybackRequest {
-    //     context_uri: None,
-    //     offset: None,
-    //     uris: vec!["spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()],
-    //     position_ms: 0,
-    // }).expect("Failed to play");
 }
