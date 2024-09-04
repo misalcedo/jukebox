@@ -65,8 +65,7 @@ fn main() {
             }).expect("Failed to play");
         }
         Commands::Write(write) => {
-            let track = write.uri.path_segments().into_iter().flatten().last().unwrap_or_default();
-            let uri = format!("spotify:track:{}", track);
+            let uri = spotify::normalize_track(&write.uri).expect("Failed to normalize the track URI");
 
             println!("{}", uri);
         }

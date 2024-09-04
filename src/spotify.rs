@@ -1,6 +1,7 @@
 use crate::spotify::models::{DeviceList, StartPlaybackRequest};
 use crate::token;
 use reqwest::Result;
+use url::Url;
 
 pub mod models;
 
@@ -32,5 +33,16 @@ impl Client {
             .error_for_status()?;
 
         Ok(())
+    }
+}
+
+pub fn normalize_track(uri: &Url) -> Option<String> {
+    match uri.scheme() {
+        "spotify" => Some(uri.to_string()),
+        "https" => {
+            let track = uri.path_segments().into_iter().flatten().last().unwrap_or_default();
+            Some(format!("spotify:track:{}", track))
+        }
+        _ => None,
     }
 }
