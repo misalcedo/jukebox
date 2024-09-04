@@ -1,0 +1,102 @@
+name: Release a new version
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ "Cargo.toml" ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Define Tags for version in Cargo.toml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.7.3
+      - name: Create Tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=v$(cargo metadata --no-deps --quiet --format-version 1 | jq -r '.packages | last | .version')
+
+          git fetch --tags
+
+          if [ $(git tag -l $TAG) ]
+          then
+            echo "::error::Git tag $TAG already exists."
+            exit 1
+          fi
+          
+          git config user.name "Add Tag from CI"
+          git config user.email ""
+          git tag $TAG
+          git push --tags
+
+          gh release view $TAG &> /dev/null || gh release create $TAG --generate-notes
+  upload:
+    name: Upload artifacts to release
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build: [linux, macos, windows]
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - build: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v1.3.0
+      - name: Install musl-tools
+        if: ${{ matrix.build == 'linux' }}
+        run: sudo apt-get update && sudo apt-get install musl-tools -y
+      - name: Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --bin tortuga --release --all-features --target ${{ matrix.target }}
+      - name: Upload artifacts
+        env:
+          BUILD: ${{ matrix.build }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ matrix.target }}
+          DIR: target/${{ matrix.target }}/release
+          FILE: tortuga
+        shell: bash
+        run: |
+          TAG=v$(cargo metadata --no-deps --quiet | jq -r '.packages | last | .version')
+          ASSET="$FILE-$TAG-$TARGET"
+          
+          pushd $DIR
+
+          if [ "$BUILD" = "windows" ]
+          then
+            FILE=$FILE.exe
+            ASSET=$ASSET.zip
+
+            7z a $ASSET $FILE
+          else
+            ASSET=$ASSET.tar.gz
+
+            tar czf $ASSET $FILE
+          fi
+
+          popd
+          gh release upload $TAG "$DIR/$ASSET" --clobber

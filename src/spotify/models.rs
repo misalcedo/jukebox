@@ -79,12 +79,12 @@ pub struct StartPlaybackRequest {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Disallows {
-    pub resuming: Option<bool>
+    pub resuming: Option<bool>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Actions {
-    pub disallows: Disallows
+    pub disallows: Disallows,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

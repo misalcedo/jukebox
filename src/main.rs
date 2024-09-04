@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use clap::{Parser, Subcommand};
-use url::Url;
 use crate::spotify::models::StartPlaybackRequest;
+use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+use url::Url;
 
 mod spotify;
 mod token;
@@ -39,8 +39,7 @@ struct Write {
 }
 
 #[derive(Debug, Parser)]
-struct Read {
-}
+struct Read {}
 
 fn main() {
     let arguments = Arguments::parse();
@@ -50,26 +49,35 @@ fn main() {
             let oauth = token::Client::new(groove.client_id, groove.token_cache);
             let mut client = spotify::Client::new(oauth);
 
-            let device = client.get_available_devices().unwrap_or_default().devices.into_iter().find(|device| {
-                match &groove.device {
+            let device = client
+                .get_available_devices()
+                .unwrap_or_default()
+                .devices
+                .into_iter()
+                .find(|device| match &groove.device {
                     None => true,
-                    Some(name) => &device.name == name
-                }
-            }).expect("Failed to find a device.");
+                    Some(name) => &device.name == name,
+                })
+                .expect("Failed to find a device.");
 
-            client.play(Some(device.id), &StartPlaybackRequest {
-                context_uri: None,
-                offset: None,
-                uris: vec!["spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()],
-                position_ms: 0,
-            }).expect("Failed to play");
+            client
+                .play(
+                    Some(device.id),
+                    &StartPlaybackRequest {
+                        context_uri: None,
+                        offset: None,
+                        uris: vec!["spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()],
+                        position_ms: 0,
+                    },
+                )
+                .expect("Failed to play");
         }
         Commands::Write(write) => {
-            let uri = spotify::normalize_track(&write.uri).expect("Failed to normalize the track URI");
+            let uri =
+                spotify::normalize_track(&write.uri).expect("Failed to normalize the track URI");
 
             println!("{}", uri);
         }
         Commands::Read(_) => {}
     }
-
 }
