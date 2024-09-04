@@ -150,11 +150,3 @@ pub struct Context {
     pub external_urls: ExternalUrls,
     pub uri: String,
 }
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct SearchRequest {
-    pub q: String,
-    #[serde(rename = "type")]
-    pub r#type: String,
-    pub offset: String
-}

@@ -1,4 +1,4 @@
-use crate::spotify::models::{DeviceList, SearchRequest, StartPlaybackRequest};
+use crate::spotify::models::{DeviceList, StartPlaybackRequest};
 use crate::token;
 use reqwest::Result;
 
@@ -28,21 +28,6 @@ impl Client {
             .query(&[("device_id", device_id)])
             .header("Authorization",  self.oauth.authorization())
             .json(request)
-            .send()?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
-    pub fn search(&mut self, query: &SearchRequest) -> Result<()> {
-        self.http.put("https://api.spotify.com/v1/search")
-            .query(&[
-                ("q", query.q.as_str()),
-                ("type", query.r#type.as_str()),
-                ("limit", "50"),
-                ("offset", query.offset.as_str()),
-            ])
-            .header("Authorization",  self.oauth.authorization())
             .send()?
             .error_for_status()?;
 

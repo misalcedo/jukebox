@@ -1,7 +1,7 @@
-use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
-use clap::{Parser, Subcommand, ValueEnum};
-use crate::spotify::models::{SearchRequest, StartPlaybackRequest};
+use clap::{Parser, Subcommand};
+use url::Url;
+use crate::spotify::models::StartPlaybackRequest;
 
 mod spotify;
 mod token;
@@ -18,7 +18,6 @@ enum Commands {
     Groove(Groove),
     Write(Write),
     Read(Read),
-    Search(Search)
 }
 
 #[derive(Debug, Parser)]
@@ -36,55 +35,11 @@ struct Groove {
 #[derive(Debug, Parser)]
 struct Write {
     #[arg(short, long)]
-    value: String,
+    uri: Url,
 }
 
 #[derive(Debug, Parser)]
 struct Read {
-}
-
-#[derive(Debug, Parser)]
-struct Search {
-    #[arg(short, long, env = "JUKEBOX_CLIENT_ID")]
-    client_id: String,
-
-    #[arg(short, long, env = "JUKEBOX_TOKEN_CACHE")]
-    token_cache: PathBuf,
-
-    #[arg(short, long)]
-    query: String,
-
-    #[arg(short, long)]
-    kind: SearchKind,
-
-    #[arg(short, long, default_value_t = 0)]
-    offset: usize
-}
-
-#[derive(Clone, Debug, ValueEnum, Default)]
-enum SearchKind {
-    Album,
-    Artist,
-    Playlist,
-    #[default]
-    Track,
-    Show,
-    Episode,
-    Audiobook
-}
-
-impl Display for SearchKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Album => write!(f, "album"),
-            Self::Artist => write!(f, "artist"),
-            Self::Playlist => write!(f, "playlist"),
-            Self::Track => write!(f, "track"),
-            Self::Show => write!(f, "show"),
-            Self::Episode => write!(f, "episode"),
-            Self::Audiobook => write!(f, "audiobook"),
-        }
-    }
 }
 
 fn main() {
@@ -109,19 +64,13 @@ fn main() {
                 position_ms: 0,
             }).expect("Failed to play");
         }
-        Commands::Write(_) => {}
-        Commands::Read(_) => {}
-        Commands::Search(search) => {
-            let oauth = token::Client::new(search.client_id, search.token_cache);
-            let mut client = spotify::Client::new(oauth);
+        Commands::Write(write) => {
+            let track = write.uri.path_segments().into_iter().flatten().last().unwrap_or_default();
+            let uri = format!("spotify:track:{}", track);
 
-
-            client.search(&SearchRequest {
-                q: search.query,
-                r#type: search.kind.to_string(),
-                offset: search.offset.to_string(),
-            }).expect("Failed to play");
+            println!("{}", uri);
         }
+        Commands::Read(_) => {}
     }
 
 }
