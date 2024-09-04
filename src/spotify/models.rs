@@ -72,7 +72,7 @@ pub struct Offset {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StartPlaybackRequest {
     pub context_uri: Option<String>,
-    pub uris: Vec<String>,
+    pub uris: Option<Vec<String>>,
     pub offset: Option<Offset>,
     pub position_ms: i64,
 }

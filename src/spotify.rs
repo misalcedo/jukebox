@@ -40,17 +40,32 @@ impl Client {
 
         Ok(())
     }
+
+    pub fn shuffle(&mut self, state: bool) -> Result<()> {
+        self.http
+            .put("https://api.spotify.com/v1/me/player/shuffle")
+            .query(&[("state", state)])
+            .header("Authorization", self.oauth.authorization())
+            .body("")
+            .send()?
+            .error_for_status()?;
+
+        Ok(())
+    }
 }
 
 pub fn normalize_uri(uri: &Url) -> Option<String> {
     let mut path = uri.path_segments().into_iter().flatten();
-    let a = path.next();
-    let b = path.next();
-    match (uri.scheme(), a, b) {
+    match (uri.scheme(), path.next(), path.next()) {
         ("spotify", None, None) => Some(uri.to_string()),
         ("https", Some(category), Some(id)) => Some(format!("spotify:{category}:{id}")),
         _ => None
     }
+}
+
+pub fn uri_parts(uri: &str) -> Option<(&str, &str)> {
+    let (_, parts) = uri.split_once(":")?;
+    parts.split_once(":")
 }
 
 #[cfg(test)]
@@ -103,5 +118,15 @@ mod tests {
     fn normalize_no_id() {
         let url = Url::parse("https://open.spotify.com/playlist?si=c2f89da801b149d2").unwrap();
         assert_eq!(normalize_uri(&url), None);
+    }
+
+    #[test]
+    fn split() {
+        assert_eq!(uri_parts("spotify:playlist:6sn3Heyme3WqK01uTNwoIp"), Some(("playlist", "6sn3Heyme3WqK01uTNwoIp")));
+    }
+
+    #[test]
+    fn split_bad() {
+        assert_eq!(uri_parts("spotify:6sn3Heyme3WqK01uTNwoIp"), None);
     }
 }
