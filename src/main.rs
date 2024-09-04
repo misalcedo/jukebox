@@ -74,7 +74,7 @@ fn main() {
         }
         Commands::Write(write) => {
             let uri =
-                spotify::normalize_track(&write.uri).expect("Failed to normalize the track URI");
+                spotify::normalize_uri(&write.uri).expect("Failed to normalize the track URI");
 
             println!("{}", uri);
         }
