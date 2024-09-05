@@ -1,10 +1,10 @@
-use std::io::{stdin, BufRead};
 use crate::spotify::models::{Device, StartPlaybackRequest};
-use clap::{Parser, Subcommand};
-use std::path::PathBuf;
-use anyhow::anyhow;
-use url::Url;
 use crate::spotify::{normalize_uri, uri_parts};
+use anyhow::anyhow;
+use clap::{Parser, Subcommand};
+use std::io::{stdin, BufRead};
+use std::path::PathBuf;
+use url::Url;
 
 mod spotify;
 mod token;
@@ -34,7 +34,8 @@ struct Groove {
     #[arg(short, long, default_value = "Miguel’s MacBook Pro (2)")]
     device: Option<String>,
 
-    #[arg(short, long, default_value = "spotify:track:6b2HYgqcK9mvktt4GxAu72", value_parser = Url::parse)]
+    #[arg(short, long, default_value = "spotify:track:6b2HYgqcK9mvktt4GxAu72", value_parser = Url::parse
+    )]
     uri: Url,
 }
 
@@ -62,14 +63,15 @@ fn main() {
 
             loop {
                 let _ = input.next();
-                if let Err(error) = start_playback(&mut client, device.id.clone(), groove.uri.to_string()) {
+                if let Err(error) =
+                    start_playback(&mut client, device.id.clone(), groove.uri.to_string())
+                {
                     eprintln!("Failed to start playback: {}", error);
                 }
             }
         }
         Commands::Write(write) => {
-            let uri =
-                normalize_uri(&write.uri).expect("Failed to normalize the track URI");
+            let uri = normalize_uri(&write.uri).expect("Failed to normalize the track URI");
 
             println!("{}", uri);
         }
@@ -85,15 +87,21 @@ fn choose_device(client: &mut spotify::Client, name: Option<&str>) -> anyhow::Re
         .find(|device| match name {
             None => true,
             Some(name) => &device.name == name,
-        }).ok_or_else(|| anyhow!("Found no matching device"))?;
+        })
+        .ok_or_else(|| anyhow!("Found no matching device"))?;
 
     Ok(device)
 }
 
-fn start_playback(client: &mut spotify::Client, device_id: String, uri: String) -> anyhow::Result<()> {
+fn start_playback(
+    client: &mut spotify::Client,
+    device_id: String,
+    uri: String,
+) -> anyhow::Result<()> {
     let mut request = StartPlaybackRequest::default();
 
-    let (category, _) = uri_parts(&uri).ok_or_else(|| anyhow!("Failed to extract category from URI"))?;
+    let (category, _) =
+        uri_parts(&uri).ok_or_else(|| anyhow!("Failed to extract category from URI"))?;
     match category {
         "track" => {
             request.uris = Some(vec![uri]);

@@ -59,7 +59,7 @@ pub fn normalize_uri(uri: &Url) -> Option<String> {
     match (uri.scheme(), path.next(), path.next()) {
         ("spotify", None, None) => Some(uri.to_string()),
         ("https", Some(category), Some(id)) => Some(format!("spotify:{category}:{id}")),
-        _ => None
+        _ => None,
     }
 }
 
@@ -74,43 +74,72 @@ mod tests {
 
     #[test]
     fn normalize_track() {
-        let url = Url::parse("https://open.spotify.com/track/6b2HYgqcK9mvktt4GxAu72?si=b71085cf9270496b").unwrap();
-        assert_eq!(normalize_uri(&url), Some("spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()));
+        let url =
+            Url::parse("https://open.spotify.com/track/6b2HYgqcK9mvktt4GxAu72?si=b71085cf9270496b")
+                .unwrap();
+        assert_eq!(
+            normalize_uri(&url),
+            Some("spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string())
+        );
     }
 
     #[test]
     fn normalize_track_no_op() {
         let url = Url::parse("spotify:track:6b2HYgqcK9mvktt4GxAu72").unwrap();
-        assert_eq!(normalize_uri(&url), Some("spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string()));
+        assert_eq!(
+            normalize_uri(&url),
+            Some("spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string())
+        );
     }
 
     #[test]
     fn normalize_album() {
-        let url = Url::parse("https://open.spotify.com/album/2gSDW1mnuKSRLRa7pgTV4f?si=DBQxmqMLQXaezZ0GooOwjg").unwrap();
-        assert_eq!(normalize_uri(&url), Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string()));
+        let url = Url::parse(
+            "https://open.spotify.com/album/2gSDW1mnuKSRLRa7pgTV4f?si=DBQxmqMLQXaezZ0GooOwjg",
+        )
+        .unwrap();
+        assert_eq!(
+            normalize_uri(&url),
+            Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string())
+        );
     }
 
     #[test]
     fn normalize_album_no_op() {
         let url = Url::parse("spotify:album:2gSDW1mnuKSRLRa7pgTV4f").unwrap();
-        assert_eq!(normalize_uri(&url), Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string()));
+        assert_eq!(
+            normalize_uri(&url),
+            Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string())
+        );
     }
 
     #[test]
     fn normalize_playlist() {
-        let url = Url::parse("https://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2").unwrap();
-        assert_eq!(normalize_uri(&url), Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string()));
+        let url = Url::parse(
+            "https://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2",
+        )
+        .unwrap();
+        assert_eq!(
+            normalize_uri(&url),
+            Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string())
+        );
     }
 
     #[test]
     fn normalize_playlist_no_op() {
         let url = Url::parse("spotify:playlist:6sn3Heyme3WqK01uTNwoIp").unwrap();
-        assert_eq!(normalize_uri(&url), Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string()));
+        assert_eq!(
+            normalize_uri(&url),
+            Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string())
+        );
     }
 
     #[test]
     fn normalize_http() {
-        let url = Url::parse("http://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2").unwrap();
+        let url = Url::parse(
+            "http://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2",
+        )
+        .unwrap();
         assert_eq!(normalize_uri(&url), None);
     }
 
@@ -122,7 +151,10 @@ mod tests {
 
     #[test]
     fn split() {
-        assert_eq!(uri_parts("spotify:playlist:6sn3Heyme3WqK01uTNwoIp"), Some(("playlist", "6sn3Heyme3WqK01uTNwoIp")));
+        assert_eq!(
+            uri_parts("spotify:playlist:6sn3Heyme3WqK01uTNwoIp"),
+            Some(("playlist", "6sn3Heyme3WqK01uTNwoIp"))
+        );
     }
 
     #[test]
