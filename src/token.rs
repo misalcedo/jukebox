@@ -71,8 +71,8 @@ impl Client {
 }
 
 pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
-    // Create a PKCE code verifier and SHA-256 encode it as a code challenge.
-    let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
+    // Create a Proof Key of Code Exchange code verifier and SHA-256 encode it as a code challenge.
+    let (code_challenge, code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     // Generate the authorization URL to which we'll redirect the user.
     let (authorize_url, _) = client
@@ -84,7 +84,7 @@ pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
         .add_scope(Scope::new("user-read-currently-playing".to_string()))
         .add_scope(Scope::new("streaming".to_string()))
         .add_scope(Scope::new("playlist-read-private".to_string()))
-        .set_pkce_challenge(pkce_code_challenge)
+        .set_pkce_challenge(code_challenge)
         .url();
 
     println!("Open this URL in your browser:\n{authorize_url}\n");
@@ -125,7 +125,7 @@ pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
 
     let token = client
         .exchange_code(code)
-        .set_pkce_verifier(pkce_code_verifier)
+        .set_pkce_verifier(code_verifier)
         .request(http_client)?;
 
     Ok(token)
