@@ -1,6 +1,8 @@
-use crate::spotify::models::StartPlaybackRequest;
+use std::io::{stdin, BufRead};
+use crate::spotify::models::{Device, StartPlaybackRequest};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use anyhow::anyhow;
 use url::Url;
 use crate::spotify::{normalize_uri, uri_parts};
 
@@ -53,44 +55,17 @@ fn main() {
             let oauth = token::Client::new(groove.client_id, groove.token_cache);
             let mut client = spotify::Client::new(oauth);
 
-            let device = client
-                .get_available_devices()
-                .unwrap_or_default()
-                .devices
-                .into_iter()
-                .find(|device| match &groove.device {
-                    None => true,
-                    Some(name) => &device.name == name,
-                })
-                .expect("Failed to find a device.");
+            let device = choose_device(&mut client, groove.device.as_deref())
+                .expect("Failed to choose a device.");
 
-            let mut request = StartPlaybackRequest {
-                context_uri: None,
-                offset: None,
-                uris: None,
-                position_ms: 0,
-            };
+            let mut input = stdin().lock().lines();
 
-            let uri = normalize_uri(&groove.uri).expect("Failed to normalize the track URI");
-            let (category, _) = uri_parts(&uri).expect("Failed to extract URI parts");
-
-            match category{
-                "track" => {
-                    request.uris = Some(vec![uri]);
-                }
-                "playlist" => {
-                    request.context_uri = Some(uri);
-                }
-                "album" => {
-                    request.context_uri = Some(uri);
-                }
-                part => {
-                    println!("Unsupported URI: {:?} ({:?})", groove.uri, part);
+            loop {
+                let _ = input.next();
+                if let Err(error) = start_playback(&mut client, device.id.clone(), groove.uri.to_string()) {
+                    eprintln!("Failed to start playback: {}", error);
                 }
             }
-
-            client.play(Some(device.id), &request).expect("Failed to play");
-            client.shuffle(true).expect("Failed to shuffle");
         }
         Commands::Write(write) => {
             let uri =
@@ -100,4 +75,48 @@ fn main() {
         }
         Commands::Read(_) => {}
     }
+}
+
+fn choose_device(client: &mut spotify::Client, name: Option<&str>) -> anyhow::Result<Device> {
+    let device = client
+        .get_available_devices()?
+        .devices
+        .into_iter()
+        .find(|device| match name {
+            None => true,
+            Some(name) => &device.name == name,
+        }).ok_or_else(|| anyhow!("Found no matching device"))?;
+
+    Ok(device)
+}
+
+fn start_playback(client: &mut spotify::Client, device_id: String, uri: String) -> anyhow::Result<()> {
+    let mut request = StartPlaybackRequest::default();
+
+    let (category, _) = uri_parts(&uri).ok_or_else(|| anyhow!("Failed to extract category from URI"))?;
+    match category {
+        "track" => {
+            request.uris = Some(vec![uri]);
+        }
+        "playlist" => {
+            request.context_uri = Some(uri);
+        }
+        "album" => {
+            request.context_uri = Some(uri);
+        }
+        _ => {
+            return Err(anyhow!("Unsupported URI category"));
+        }
+    }
+
+    client.play(Some(device_id), &request)?;
+
+    // Sometimes shuffle is unable to find a playback session.
+    if let Err(err) = client.shuffle(true) {
+        if err.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+            client.shuffle(true)?;
+        }
+    };
+
+    Ok(())
 }

@@ -4,7 +4,6 @@ use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
     TokenResponse, TokenUrl,
 };
-use std::io;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -71,7 +70,7 @@ impl Client {
     }
 }
 
-pub fn authorize(client: &BasicClient) -> Option<BasicTokenResponse> {
+pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
     // Create a PKCE code verifier and SHA-256 encode it as a code challenge.
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -124,22 +123,26 @@ pub fn authorize(client: &BasicClient) -> Option<BasicTokenResponse> {
         code
     };
 
-    client
+    let token = client
         .exchange_code(code)
         .set_pkce_verifier(pkce_code_verifier)
-        .request(http_client)
-        .ok()
+        .request(http_client)?;
+
+    Ok(token)
 }
 
-pub fn save(path: impl AsRef<Path>, token: &BasicTokenResponse) -> io::Result<()> {
-    let token = serde_json::to_string(&token)
-        .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to parse token"))?;
-    std::fs::write(path, token)
+pub fn save(path: impl AsRef<Path>, token: &BasicTokenResponse) -> anyhow::Result<()> {
+    let token = serde_json::to_string(&token)?;
+
+    std::fs::write(path, token)?;
+
+    Ok(())
 }
 
-fn refresh(client: &BasicClient, token: &BasicTokenResponse) -> Option<BasicTokenResponse> {
-    client
+fn refresh(client: &BasicClient, token: &BasicTokenResponse) -> anyhow::Result<BasicTokenResponse> {
+    let token = client
         .exchange_refresh_token(token.refresh_token().expect("Missing refresh token"))
-        .request(http_client)
-        .ok()
+        .request(http_client)?;
+
+    Ok(token)
 }
