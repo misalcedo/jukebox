@@ -6,6 +6,7 @@ use std::io::{stdin, BufRead};
 use std::path::PathBuf;
 use url::Url;
 
+mod card;
 mod spotify;
 mod token;
 
@@ -72,11 +73,26 @@ fn main() {
         }
         Commands::Write(write) => {
             let uri = normalize_uri(&write.uri).expect("Failed to normalize the track URI");
+            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
-            println!("{}", uri);
+            reader.write(uri).expect("Failed to write the URI to the card.");
         }
-        Commands::Read(_) => {}
+        Commands::Read(_) => {
+            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
+            let value = reader.read().expect("Failed to read the URI from the card.");
+
+            println!("{value}");
+        }
     }
+}
+
+fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
+    let mut readers = ctx.list_readers_owned()?;
+    let reader = readers.pop().ok_or_else(|| anyhow!("No readers are connected."))?;
+
+    Ok(card::Reader::new(ctx, reader))
 }
 
 fn choose_device(client: &mut spotify::Client, name: Option<&str>) -> anyhow::Result<Device> {
