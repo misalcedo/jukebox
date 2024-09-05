@@ -81,9 +81,19 @@ fn main() {
         Commands::Read(_) => {
             let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
-            let value = reader.read().expect("Failed to read the URI from the card.");
 
-            println!("{value}");
+            loop {
+                match reader.read() {
+                    Ok(None) => {}
+                    Ok(Some(value)) => {
+                        println!("{value}");
+                    }
+                    Err(err) => {
+                        eprintln!("Failed to read the URI from the card: {}", err);
+                    }
+                }
+                reader.wait(None).expect("Failed to wait for a card to be inserted.");
+            }
         }
     }
 }
