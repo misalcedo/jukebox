@@ -91,7 +91,7 @@ pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
 
     let code = {
         // A very naive implementation of the redirect server.
-        let listener = TcpListener::bind("127.0.0.1:2474").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:2474")?;
 
         // The server will terminate itself after collecting the first code.
         let Some(mut stream) = listener.incoming().flatten().next() else {
@@ -101,10 +101,10 @@ pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
         let mut reader = BufReader::new(&stream);
 
         let mut request_line = String::new();
-        reader.read_line(&mut request_line).unwrap();
+        reader.read_line(&mut request_line)?;
 
         let redirect_url = request_line.split_whitespace().nth(1).unwrap();
-        let url = Url::parse(&("http://localhost".to_string() + redirect_url)).unwrap();
+        let url = Url::parse(&("http://localhost".to_string() + redirect_url))?;
 
         let code = url
             .query_pairs()
@@ -118,7 +118,7 @@ pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
             message.len(),
             message
         );
-        stream.write_all(response.as_bytes()).unwrap();
+        stream.write_all(response.as_bytes())?;
 
         code
     };
