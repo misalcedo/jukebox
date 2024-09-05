@@ -47,6 +47,7 @@ impl Reader {
     }
 
     pub fn write(&self, value: String) -> anyhow::Result<()> {
+        // Writes treat a missing card as an error.
         let card = self.ctx.connect(&self.reader, pcsc::ShareMode::Direct, pcsc::Protocols::UNDEFINED)?;
 
         Ok(())
