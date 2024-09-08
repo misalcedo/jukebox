@@ -21,6 +21,7 @@ struct Arguments {
 enum Commands {
     Groove(Groove),
     Write(Write),
+    Erase(Erase),
     Read(Read),
 }
 
@@ -45,6 +46,9 @@ struct Write {
     #[arg(short, long)]
     uri: Url,
 }
+
+#[derive(Debug, Parser)]
+struct Erase {}
 
 #[derive(Debug, Parser)]
 struct Read {}
@@ -76,7 +80,17 @@ fn main() {
             let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
-            reader.write(uri).expect("Failed to write the URI to the card.");
+            if !reader.write(uri).expect("Failed to write the URI to the card.") {
+                eprintln!("No card is present.");
+            }
+        }
+        Commands::Erase(_) => {
+            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
+
+            if !reader.erase().expect("Failed to erase the card.") {
+                eprintln!("No card is present.");
+            }
         }
         Commands::Read(_) => {
             let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
@@ -86,13 +100,13 @@ fn main() {
                 match reader.read() {
                     Ok(None) => {}
                     Ok(Some(value)) => {
-                        println!("{value}");
+                        println!("{value:?}");
                     }
                     Err(err) => {
                         eprintln!("Failed to read the URI from the card: {}", err);
                     }
                 }
-                reader.wait(None).expect("Failed to wait for a card to be inserted.");
+                reader.wait(None).expect("Failed to wait for a card to be present.");
             }
         }
     }
@@ -100,6 +114,7 @@ fn main() {
 
 fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
     let mut readers = ctx.list_readers_owned()?;
+    // Look for "ACS ACR1252 1S CL Reader PICC 0"
     let reader = readers.pop().ok_or_else(|| anyhow!("No readers are connected."))?;
 
     Ok(card::Reader::new(ctx, reader))
