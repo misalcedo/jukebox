@@ -1,6 +1,30 @@
+import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
+
 export component AppWindow inherits Window {
-    Text {
-        text: "hello world";
-        color: green;
-    }
+    width: 640px;
+    height: 400px;
+
+    in-out property <string> value: "";
+        callback request-read-value();
+        callback request-write-value();
+
+        VerticalBox {
+            Text {
+                text: "Value: \{root.value}";
+            }
+            HorizontalBox {
+                Button {
+                    text: "Read";
+                    clicked => {
+                        root.request-read-value();
+                    }
+                }
+                Button {
+                    text: "Write";
+                    clicked => {
+                        root.request-write-value();
+                    }
+                }
+            }
+        }
 }

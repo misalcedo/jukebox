@@ -1,14 +1,9 @@
-use crate::spotify::models::{Device, StartPlaybackRequest};
-use crate::spotify::{normalize_uri, uri_parts};
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
-use std::io::BufRead;
+use jukebox::spotify::models::{Device, StartPlaybackRequest};
+use jukebox::{card, spotify, token};
 use std::path::PathBuf;
 use url::Url;
-
-mod card;
-mod spotify;
-mod token;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about)]
@@ -81,7 +76,7 @@ fn main() {
             }
         }
         Commands::Write(write) => {
-            let uri = normalize_uri(&write.uri).expect("Failed to normalize the track URI");
+            let uri = spotify::normalize_uri(&write.uri).expect("Failed to normalize the track URI");
             let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
@@ -146,7 +141,7 @@ fn start_playback(
     let mut request = StartPlaybackRequest::default();
 
     let (category, _) =
-        uri_parts(&uri).ok_or_else(|| anyhow!("Failed to extract category from URI"))?;
+        spotify::uri_parts(&uri).ok_or_else(|| anyhow!("Failed to extract category from URI"))?;
     match category {
         "track" => {
             request.uris = Some(vec![uri]);
