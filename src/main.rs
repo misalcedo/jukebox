@@ -2,7 +2,7 @@ use crate::spotify::models::{Device, StartPlaybackRequest};
 use crate::spotify::{normalize_uri, uri_parts};
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
-use std::io::{stdin, BufRead};
+use std::io::BufRead;
 use std::path::PathBuf;
 use url::Url;
 
@@ -35,10 +35,6 @@ struct Groove {
 
     #[arg(short, long, default_value = "Miguel’s MacBook Pro (2)")]
     device: Option<String>,
-
-    #[arg(short, long, default_value = "spotify:track:6b2HYgqcK9mvktt4GxAu72", value_parser = Url::parse
-    )]
-    uri: Url,
 }
 
 #[derive(Debug, Parser)]
@@ -64,14 +60,23 @@ fn main() {
             let device = choose_device(&mut client, groove.device.as_deref())
                 .expect("Failed to choose a device.");
 
-            let mut input = stdin().lock().lines();
+            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
             loop {
-                let _ = input.next();
-                if let Err(error) =
-                    start_playback(&mut client, device.id.clone(), groove.uri.to_string())
-                {
-                    eprintln!("Failed to start playback: {}", error);
+                reader.wait(None).expect("Failed to wait for a card to be present.");
+
+                match reader.read().expect("Failed to read the URI from the card.") {
+                    None => {
+                        eprintln!("No card is present.");
+                    }
+                    Some(uri) => {
+                        if let Err(error) =
+                            start_playback(&mut client, device.id.clone(), uri.to_string())
+                        {
+                            eprintln!("Failed to start playback: {}", error);
+                        }
+                    }
                 }
             }
         }
@@ -96,17 +101,16 @@ fn main() {
             let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
-            loop {
-                match reader.read() {
-                    Ok(None) => {}
-                    Ok(Some(value)) => {
-                        println!("{value:?}");
-                    }
-                    Err(err) => {
-                        eprintln!("Failed to read the URI from the card: {}", err);
-                    }
+            match reader.read() {
+                Ok(None) => {
+                    eprintln!("No card is present.");
                 }
-                reader.wait(None).expect("Failed to wait for a card to be present.");
+                Ok(Some(value)) => {
+                    println!("{value:?}");
+                }
+                Err(err) => {
+                    eprintln!("Failed to read the URI from the card: {}", err);
+                }
             }
         }
     }
