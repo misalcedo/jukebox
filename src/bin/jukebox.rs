@@ -55,13 +55,19 @@ fn main() {
             let device = choose_device(&mut client, groove.device.as_deref())
                 .expect("Failed to choose a device.");
 
-            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let ctx =
+                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
             loop {
-                reader.wait(None).expect("Failed to wait for a card to be present.");
+                reader
+                    .wait(None)
+                    .expect("Failed to wait for a card to be present.");
 
-                match reader.read().expect("Failed to read the URI from the card.") {
+                match reader
+                    .read()
+                    .expect("Failed to read the URI from the card.")
+                {
                     None => {
                         eprintln!("No card is present.");
                     }
@@ -76,16 +82,22 @@ fn main() {
             }
         }
         Commands::Write(write) => {
-            let uri = spotify::normalize_uri(&write.uri).expect("Failed to normalize the track URI");
-            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let uri =
+                spotify::normalize_uri(&write.uri).expect("Failed to normalize the track URI");
+            let ctx =
+                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
-            if !reader.write(uri).expect("Failed to write the URI to the card.") {
+            if !reader
+                .write(uri)
+                .expect("Failed to write the URI to the card.")
+            {
                 eprintln!("No card is present.");
             }
         }
         Commands::Erase(_) => {
-            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let ctx =
+                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
             if !reader.erase().expect("Failed to erase the card.") {
@@ -93,7 +105,8 @@ fn main() {
             }
         }
         Commands::Read(_) => {
-            let ctx = pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let ctx =
+                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = choose_reader(ctx).expect("Failed to choose a card reader.");
 
             match reader.read() {
@@ -114,7 +127,9 @@ fn main() {
 fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
     let mut readers = ctx.list_readers_owned()?;
     // Look for "ACS ACR1252 1S CL Reader PICC 0"
-    let reader = readers.pop().ok_or_else(|| anyhow!("No readers are connected."))?;
+    let reader = readers
+        .pop()
+        .ok_or_else(|| anyhow!("No readers are connected."))?;
 
     Ok(card::Reader::new(ctx, reader))
 }

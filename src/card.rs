@@ -90,14 +90,14 @@ impl Reader {
     }
 
     fn connect(&self) -> anyhow::Result<Option<Card>> {
-        match self.ctx.connect(&self.reader, pcsc::ShareMode::Direct, pcsc::Protocols::T0 | pcsc::Protocols::T1) {
+        match self.ctx.connect(
+            &self.reader,
+            pcsc::ShareMode::Direct,
+            pcsc::Protocols::T0 | pcsc::Protocols::T1,
+        ) {
             Ok(card) => Ok(Some(card)),
-            Err(pcsc::Error::NoSmartcard) => {
-                Ok(None)
-            }
-            Err(err) => {
-                Err(anyhow!(err))
-            }
+            Err(pcsc::Error::NoSmartcard) => Ok(None),
+            Err(err) => Err(anyhow!(err)),
         }
     }
 }

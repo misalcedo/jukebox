@@ -9,7 +9,9 @@ pub mod token;
 pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
     let mut readers = ctx.list_readers_owned()?;
     // Look for "ACS ACR1252 1S CL Reader PICC 0"
-    let reader = readers.pop().ok_or_else(|| anyhow!("No readers are connected."))?;
+    let reader = readers
+        .pop()
+        .ok_or_else(|| anyhow!("No readers are connected."))?;
 
     Ok(card::Reader::new(ctx, reader))
 }
