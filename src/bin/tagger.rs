@@ -70,8 +70,13 @@ fn main() -> Result<(), slint::PlatformError> {
 
         move || {
             if let Some(ui) = ui_handle.upgrade() {
-                let value = read_value().expect("Failed to read the URI from the card.");
-                ui.set_value(SharedString::from(value));
+                match read_value() {
+                    Ok(value) => {
+                        ui.set_value(SharedString::from(value));
+                        ui.set_error(SharedString::from(String::new()));
+                    }
+                    Err(e) => ui.set_error(SharedString::from(format!("Error: {}", e))),
+                }
             }
         }
     });
@@ -81,8 +86,12 @@ fn main() -> Result<(), slint::PlatformError> {
 
         move || {
             if let Some(ui) = ui_handle.upgrade() {
-                write_value(ui.get_value().as_str().to_string())
-                    .expect("Failed to write the URI to the card.");
+                match write_value(ui.get_value().as_str().to_string()) {
+                    Ok(_) => {
+                        ui.set_error(SharedString::from(String::new()));
+                    }
+                    Err(e) => ui.set_error(SharedString::from(format!("Error: {}", e))),
+                }
             }
         }
     });
@@ -97,8 +106,10 @@ fn main() -> Result<(), slint::PlatformError> {
                 let value = ui.get_value();
 
                 match describe(client_id, token_cache, value.as_str()) {
-                    Ok(_) => {}
-                    Err(e) => {}
+                    Ok(_) => {
+                        ui.set_error(SharedString::from(String::new()));
+                    }
+                    Err(e) => ui.set_error(SharedString::from(format!("Error: {}", e))),
                 }
             }
         }
