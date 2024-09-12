@@ -125,8 +125,8 @@ fn main() {
                 Ok(Some(value)) => {
                     println!("{value:?}");
                 }
-                Err(err) => {
-                    eprintln!("Failed to read the URI from the card: {}", err);
+                Err(e) => {
+                    eprintln!("Failed to read the URI from the card: {}", e);
                 }
             }
         }

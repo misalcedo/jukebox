@@ -25,8 +25,8 @@ impl Reader {
                     response.len()
                 };
 
-                if let Err((_, err)) = card.disconnect(pcsc::Disposition::EjectCard) {
-                    return Err(anyhow!(err));
+                if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
+                    return Err(anyhow!(e));
                 }
 
                 buffer.truncate(length);
@@ -54,8 +54,8 @@ impl Reader {
 
                 card.transmit(&command, &mut [])?;
 
-                if let Err((_, err)) = card.disconnect(pcsc::Disposition::EjectCard) {
-                    return Err(anyhow!(err));
+                if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
+                    return Err(anyhow!(e));
                 }
 
                 Ok(true)
@@ -70,8 +70,8 @@ impl Reader {
                 let command = b"\x00\x0E\x00\x00\x00\x00";
                 card.transmit(command, &mut [])?;
 
-                if let Err((_, err)) = card.disconnect(pcsc::Disposition::EjectCard) {
-                    return Err(anyhow!(err));
+                if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
+                    return Err(anyhow!(e));
                 }
 
                 Ok(true)
@@ -97,7 +97,7 @@ impl Reader {
         ) {
             Ok(card) => Ok(Some(card)),
             Err(pcsc::Error::NoSmartcard) => Ok(None),
-            Err(err) => Err(anyhow!(err)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 }

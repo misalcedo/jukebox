@@ -55,8 +55,8 @@ pub fn start_playback(
     client.play(Some(device_id), &request)?;
 
     // Sometimes shuffle is unable to find a playback session.
-    if let Err(err) = client.shuffle(true) {
-        if err.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+    if let Err(e) = client.shuffle(true) {
+        if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
             client.shuffle(true)?;
         }
     };

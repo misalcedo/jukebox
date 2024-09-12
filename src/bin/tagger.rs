@@ -96,7 +96,10 @@ fn main() -> Result<(), slint::PlatformError> {
                 let token_cache = arguments.token_cache.clone();
                 let value = ui.get_value();
 
-                describe(client_id, token_cache, value.as_str()).expect("Failed to describe the URI.");
+                match describe(client_id, token_cache, value.as_str()) {
+                    Ok(_) => {}
+                    Err(e) => {}
+                }
             }
         }
     });
