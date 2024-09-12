@@ -1,7 +1,44 @@
 use anyhow::anyhow;
 use slint::SharedString;
 
-slint::include_modules!();
+slint::slint! {
+import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    width: 640px;
+    height: 400px;
+
+    in property <string> error: "";
+    in-out property <string> value: "";
+
+    callback request-read-value();
+    callback request-write-value();
+
+    VerticalBox {
+        LineEdit {
+            placeholder-text: "Enter value here";
+            text: root.value;
+        }
+        Text {
+            text: root.error;
+        }
+        HorizontalBox {
+            Button {
+                text: "Read";
+                clicked => {
+                    root.request-read-value();
+                }
+            }
+            Button {
+                text: "Write";
+                clicked => {
+                    root.request-write-value();
+                }
+            }
+        }
+    }
+}
+}
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
