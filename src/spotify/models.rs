@@ -153,10 +153,10 @@ pub struct Context {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Track {
-    album: Album,
-    artists: Vec<Artist>,
-    name: String,
-    uri: String,
+    pub album: Album,
+    pub artists: Vec<Artist>,
+    pub name: String,
+    pub uri: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -173,7 +173,7 @@ pub struct Owner {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Playlist {
-    name: String,
-    owner: Owner,
-    uri: String,
+    pub name: String,
+    pub owner: Owner,
+    pub uri: String,
 }
