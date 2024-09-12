@@ -1,0 +1,58 @@
+#! /bin/bash
+
+cargo build --release
+
+BUNDLE="target/bundle/Jukebox Tagger.app"
+mkdir -p "$BUNDLE/Contents/MacOS"
+mkdir -p "$BUNDLE/Contents/Resources"
+
+cp target/release/tagger "$BUNDLE/Contents/MacOS"
+cp assets/jukebox.icns "$BUNDLE/Contents/Resources"
+
+cat > "$BUNDLE/Contents/MacOS/run" <<EOF
+#!/bin/bash
+bin="\$(dirname "\$0")"
+
+JUKEBOX_TOKEN_CACHE="$JUKEBOX_TOKEN_CACHE"
+JUKEBOX_CLIENT_ID="$JUKEBOX_CLIENT_ID"
+JUKEBOX_MARKET="$JUKEBOX_MARKET"
+
+"\$bin/tagger"
+EOF
+
+chmod +x "$BUNDLE/Contents/MacOS/run"
+
+cat > "$BUNDLE/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>cc.salcedo.jukebox-tagger</string>
+
+    <key>CFBundleName</key>
+    <string>Jukebox Tagger</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <key>CFBundleExecutable</key>
+    <string>run</string>
+
+    <key>CFBundleIconFile</key>
+    <string>jukebox</string>
+
+    <key>CFBundlePrimaryIconFile</key>
+    <string>jukebox</string>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright (c) Miguel Salcedo 2024. All rights reserved.</string>
+</dict>
+</plist>
+EOF
