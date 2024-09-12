@@ -11,7 +11,7 @@ import { Button, GridBox, LineEdit } from "std-widgets.slint";
 export component AppWindow inherits Window {
     preferred-width: 640px;
     preferred-height: 400px;
-    icon: @image-url("static/jukebox.png");
+    icon: @image-url("assets/jukebox.png");
     title: @tr("Jukebox Tagger");
 
     in property <string> result: "";
