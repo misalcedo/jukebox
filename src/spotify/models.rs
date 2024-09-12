@@ -162,7 +162,6 @@ pub struct Track {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Owner {
     pub external_urls: ExternalUrls,
-    pub followers: Followers,
     pub href: String,
     pub id: String,
     #[serde(rename = "type")]

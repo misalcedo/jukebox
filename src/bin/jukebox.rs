@@ -35,7 +35,10 @@ struct Groove {
     #[arg(short, long, env = "JUKEBOX_TOKEN_CACHE")]
     token_cache: PathBuf,
 
-    #[arg(short, long, default_value = "Miguel’s MacBook Pro (2)")]
+    #[arg(short, long, env = "JUKEBOX_MARKET")]
+    market: String,
+
+    #[arg(short, long, env = "JUKEBOX_DEVICE=")]
     device: Option<String>,
 }
 
@@ -61,7 +64,7 @@ fn main() {
         }
         Commands::Groove(groove) => {
             let oauth = token::Client::new(groove.client_id, groove.token_cache);
-            let mut client = spotify::Client::new(oauth);
+            let mut client = spotify::Client::new(oauth, groove.market);
 
             let device = jukebox::choose_device(&mut client, groove.device.as_deref())
                 .expect("Failed to choose a device.");

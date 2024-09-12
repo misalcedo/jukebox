@@ -67,6 +67,9 @@ struct Arguments {
 
     #[arg(short, long, env = "JUKEBOX_TOKEN_CACHE")]
     token_cache: PathBuf,
+
+    #[arg(short, long, env = "JUKEBOX_MARKET")]
+    market: String,
 }
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -111,9 +114,10 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Some(ui) = ui_handle.upgrade() {
                 let client_id = arguments.client_id.clone();
                 let token_cache = arguments.token_cache.clone();
+                let market = arguments.market.clone();
                 let value = ui.get_value();
 
-                match describe(client_id, token_cache, value.as_str()) {
+                match describe(client_id, token_cache, market, value.as_str()) {
                     Ok(description) => {
                         ui.set_result(SharedString::from(description));
                     }
@@ -147,9 +151,9 @@ fn write_value(value: String) -> anyhow::Result<()> {
     }
 }
 
-fn describe(client_id: String, token_cache: PathBuf, value: &str) -> anyhow::Result<String> {
+fn describe(client_id: String, token_cache: PathBuf, market: String, value: &str) -> anyhow::Result<String> {
     let oauth = token::Client::new(client_id, token_cache);
-    let mut client = spotify::Client::new(oauth);
+    let mut client = spotify::Client::new(oauth, market);
     let uri: spotify::Uri = value.parse()?;
 
     match uri.category.as_str() {

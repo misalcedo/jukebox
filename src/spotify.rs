@@ -77,12 +77,13 @@ impl FromStr for Uri {
 pub struct Client {
     oauth: token::Client,
     http: reqwest::blocking::Client,
+    market: String,
 }
 
 impl Client {
-    pub fn new(oauth: token::Client) -> Client {
+    pub fn new(oauth: token::Client, market: String) -> Client {
         let http = reqwest::blocking::Client::new();
-        Client { oauth, http }
+        Client { oauth, http, market }
     }
 
     pub fn get_available_devices(&mut self) -> Result<DeviceList> {
@@ -125,6 +126,7 @@ impl Client {
     pub fn get_track(&mut self, id: &str) -> Result<Track> {
         self.http
             .get(format!("https://api.spotify.com/v1/tracks/{}", id))
+            .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?
@@ -135,6 +137,7 @@ impl Client {
     pub fn get_album(&mut self, id: &str) -> Result<Album> {
         self.http
             .get(format!("https://api.spotify.com/v1/albums/{}", id))
+            .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?
@@ -145,6 +148,7 @@ impl Client {
     pub fn get_playlist(&mut self, id: &str) -> Result<Playlist> {
         self.http
             .get(format!("https://api.spotify.com/v1/playlists/{}", id))
+            .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?
