@@ -21,3 +21,8 @@ https://cardwerk.com/smart-card-standard-iso7816-4-section-6-basic-interindustry
 ## Supported Cards
 
 - NXP NTAG216
+
+## Icon
+
+The jukebox icon is made by [Freepik](https://www.flaticon.com/authors/freepik)
+from [www.flaticon.com](https://www.flaticon.com/)

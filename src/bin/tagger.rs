@@ -9,8 +9,10 @@ slint::slint! {
 import { Button, GridBox, LineEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
-    width: 640px;
-    height: 400px;
+    preferred-width: 640px;
+    preferred-height: 400px;
+    icon: @image-url("static/jukebox.png");
+    title: @tr("Jukebox Tagger");
 
     in property <string> result: "";
     in-out property <string> value: "";
@@ -86,7 +88,7 @@ fn main() -> Result<(), slint::PlatformError> {
                         ui.set_value(SharedString::from(value));
                         ui.set_result(SharedString::from(String::new()));
                     }
-                    Err(e) => ui.set_result(SharedString::from(format!("Error: {}", e))),
+                    Err(e) => ui.set_result(slint::format!("Error: {}", e)),
                 }
             }
         }
@@ -99,9 +101,9 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Some(ui) = ui_handle.upgrade() {
                 match write_value(ui.get_value().as_str().to_string()) {
                     Ok(_) => {
-                        ui.set_result(SharedString::from(String::from("Done")));
+                        ui.set_result(slint::format!("Done"));
                     }
-                    Err(e) => ui.set_result(SharedString::from(format!("Error: {}", e))),
+                    Err(e) => ui.set_result(slint::format!("Error: {}", e)),
                 }
             }
         }
@@ -121,7 +123,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     Ok(description) => {
                         ui.set_result(SharedString::from(description));
                     }
-                    Err(e) => ui.set_result(SharedString::from(format!("Error: {}", e))),
+                    Err(e) => ui.set_result(slint::format!("Error: {}", e)),
                 }
             }
         }
