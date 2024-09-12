@@ -14,10 +14,20 @@ struct Arguments {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    Login(Login),
     Groove(Groove),
     Write(Write),
     Erase(Erase),
     Read(Read),
+}
+
+#[derive(Debug, Parser)]
+struct Login {
+    #[arg(short, long, env = "JUKEBOX_CLIENT_ID")]
+    client_id: String,
+
+    #[arg(short, long, env = "JUKEBOX_TOKEN_CACHE")]
+    token_cache: PathBuf,
 }
 
 #[derive(Debug, Parser)]
@@ -48,6 +58,10 @@ fn main() {
     let arguments = Arguments::parse();
 
     match arguments.command {
+        Commands::Login(login) => {
+            let mut oauth = token::Client::new(login.client_id, login.token_cache);
+            oauth.authorization();
+        }
         Commands::Groove(groove) => {
             let oauth = token::Client::new(groove.client_id, groove.token_cache);
             let mut client = spotify::Client::new(oauth);
