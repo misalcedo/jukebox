@@ -150,3 +150,30 @@ pub struct Context {
     pub external_urls: ExternalUrls,
     pub uri: String,
 }
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Track {
+    album: Album,
+    artists: Vec<Artist>,
+    name: String,
+    uri: String,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Owner {
+    pub external_urls: ExternalUrls,
+    pub followers: Followers,
+    pub href: String,
+    pub id: String,
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub uri: String,
+    pub display_name: String,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Playlist {
+    name: String,
+    owner: Owner,
+    uri: String,
+}

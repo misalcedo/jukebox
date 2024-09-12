@@ -1,9 +1,49 @@
-use crate::spotify::models::{DeviceList, StartPlaybackRequest};
+use crate::spotify::models::{Album, DeviceList, Playlist, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
 use url::Url;
 
 pub mod models;
+
+pub struct Uri {
+    pub category: String,
+    pub id: String,
+}
+
+impl<'a> TryFrom<&'a str> for Uri {
+    type Error = &'a str;
+
+    fn try_from(value: &'a str) -> std::result::Result<Self, Self::Error> {
+        let Some(("spotify", parts)) = value.split_once(":") else {
+            return Err(value);
+        };
+        let (category, id) = parts.split_once(":").ok_or(value)?;
+
+        Ok(Uri {
+            category: category.to_string(),
+            id: id.to_string(),
+        })
+    }
+}
+
+impl TryFrom<Url> for Uri {
+    type Error = Url;
+
+    fn try_from(value: Url) -> std::result::Result<Self, Self::Error> {
+        let mut path = value.path_segments().into_iter().flatten();
+        match (value.scheme(), path.next(), path.next()) {
+            ("spotify", None, None) => match Self::try_from(value.as_str()) {
+                Ok(uri) => Ok(uri),
+                Err(_) => Err(value),
+            },
+            ("https", Some(category), Some(id)) => Ok(Uri {
+                category: category.to_string(),
+                id: id.to_string(),
+            }),
+            _ => Err(value),
+        }
+    }
+}
 
 pub struct Client {
     oauth: token::Client,
@@ -52,6 +92,36 @@ impl Client {
 
         Ok(())
     }
+
+    pub fn get_track(&mut self, id: &str) -> Result<Track> {
+        self.http
+            .put(format!("https://api.spotify.com/v1/tracks/{}", id))
+            .header("Authorization", self.oauth.authorization())
+            .body("")
+            .send()?
+            .error_for_status()?
+            .json()
+    }
+
+    pub fn get_album(&mut self, id: &str) -> Result<Album> {
+        self.http
+            .put(format!("https://api.spotify.com/v1/albums/{}", id))
+            .header("Authorization", self.oauth.authorization())
+            .body("")
+            .send()?
+            .error_for_status()?
+            .json()
+    }
+
+    pub fn get_playlist(&mut self, id: &str) -> Result<Playlist> {
+        self.http
+            .put(format!("https://api.spotify.com/v1/playlists/{}", id))
+            .header("Authorization", self.oauth.authorization())
+            .body("")
+            .send()?
+            .error_for_status()?
+            .json()
+    }
 }
 
 pub fn normalize_uri(uri: &Url) -> Option<String> {
@@ -97,7 +167,7 @@ mod tests {
         let url = Url::parse(
             "https://open.spotify.com/album/2gSDW1mnuKSRLRa7pgTV4f?si=DBQxmqMLQXaezZ0GooOwjg",
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             normalize_uri(&url),
             Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string())
@@ -118,7 +188,7 @@ mod tests {
         let url = Url::parse(
             "https://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2",
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             normalize_uri(&url),
             Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string())
@@ -139,7 +209,7 @@ mod tests {
         let url = Url::parse(
             "http://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2",
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(normalize_uri(&url), None);
     }
 
