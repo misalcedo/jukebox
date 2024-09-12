@@ -24,7 +24,7 @@ export component AppWindow inherits Window {
             LineEdit {
                 colspan: 3;
                 placeholder-text: "Enter value here";
-                text: root.value;
+                edited => { root.value = self.text; }
             }
         }
 
@@ -186,6 +186,8 @@ fn describe(client_id: String, token_cache: PathBuf, value: &str) -> anyhow::Res
                 let artists: Vec<&str> = album.artists.iter().map(|a| a.name.as_str()).collect();
                 write!(&mut description, "Artists: {}\n", artists.join(", "))?;
             }
+
+            write!(&mut description, "Tracks: {}\n", album.total_tracks)?;
 
             Ok(description)
         }

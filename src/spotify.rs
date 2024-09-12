@@ -124,7 +124,7 @@ impl Client {
 
     pub fn get_track(&mut self, id: &str) -> Result<Track> {
         self.http
-            .put(format!("https://api.spotify.com/v1/tracks/{}", id))
+            .get(format!("https://api.spotify.com/v1/tracks/{}", id))
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?
@@ -134,7 +134,7 @@ impl Client {
 
     pub fn get_album(&mut self, id: &str) -> Result<Album> {
         self.http
-            .put(format!("https://api.spotify.com/v1/albums/{}", id))
+            .get(format!("https://api.spotify.com/v1/albums/{}", id))
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?
@@ -144,7 +144,7 @@ impl Client {
 
     pub fn get_playlist(&mut self, id: &str) -> Result<Playlist> {
         self.http
-            .put(format!("https://api.spotify.com/v1/playlists/{}", id))
+            .get(format!("https://api.spotify.com/v1/playlists/{}", id))
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?
