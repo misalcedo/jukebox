@@ -6,28 +6,36 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 slint::slint! {
-import { Button, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+import { Button, GridBox, LineEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     width: 640px;
     height: 400px;
 
-    in property <string> error: "";
+    in property <string> result: "";
     in-out property <string> value: "";
 
     callback read-value();
     callback write-value();
     callback describe();
 
-    VerticalBox {
-        LineEdit {
-            placeholder-text: "Enter value here";
-            text: root.value;
+    GridBox {
+        Row {
+            LineEdit {
+                colspan: 3;
+                placeholder-text: "Enter value here";
+                text: root.value;
+            }
         }
-        Text {
-            text: root.error;
+
+        Row {
+            Text {
+                colspan: 3;
+                text: root.result;
+            }
         }
-        HorizontalBox {
+
+        Row {
             Button {
                 text: "Read";
                 clicked => {
@@ -73,9 +81,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 match read_value() {
                     Ok(value) => {
                         ui.set_value(SharedString::from(value));
-                        ui.set_error(SharedString::from(String::new()));
+                        ui.set_result(SharedString::from(String::new()));
                     }
-                    Err(e) => ui.set_error(SharedString::from(format!("Error: {}", e))),
+                    Err(e) => ui.set_result(SharedString::from(format!("Error: {}", e))),
                 }
             }
         }
@@ -88,9 +96,9 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Some(ui) = ui_handle.upgrade() {
                 match write_value(ui.get_value().as_str().to_string()) {
                     Ok(_) => {
-                        ui.set_error(SharedString::from(String::new()));
+                        ui.set_result(SharedString::from(String::from("Done")));
                     }
-                    Err(e) => ui.set_error(SharedString::from(format!("Error: {}", e))),
+                    Err(e) => ui.set_result(SharedString::from(format!("Error: {}", e))),
                 }
             }
         }
@@ -106,10 +114,10 @@ fn main() -> Result<(), slint::PlatformError> {
                 let value = ui.get_value();
 
                 match describe(client_id, token_cache, value.as_str()) {
-                    Ok(_) => {
-                        ui.set_error(SharedString::from(String::new()));
+                    Ok(description) => {
+                        ui.set_result(SharedString::from(description));
                     }
-                    Err(e) => ui.set_error(SharedString::from(format!("Error: {}", e))),
+                    Err(e) => ui.set_result(SharedString::from(format!("Error: {}", e))),
                 }
             }
         }
