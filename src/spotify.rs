@@ -48,41 +48,28 @@ impl FromStr for Uri {
     type Err = UriParseError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        Self::try_from(s).map_err(|_| UriParseError)
-    }
-}
+        match s.split_once(":") {
+            Some(("spotify", parts)) => {
+                let (category, id) = parts.split_once(":").ok_or(UriParseError)?;
 
-impl<'a> TryFrom<&'a str> for Uri {
-    type Error = &'a str;
+                Ok(Uri {
+                    category: category.to_string(),
+                    id: id.to_string(),
+                })
+            }
+            Some(("https", _)) => {
+                let url = Url::parse(s).map_err(|_| UriParseError)?;
+                let mut path = url.path_segments().into_iter().flatten();
 
-    fn try_from(value: &'a str) -> std::result::Result<Self, Self::Error> {
-        let Some(("spotify", parts)) = value.split_once(":") else {
-            return Err(value);
-        };
-        let (category, id) = parts.split_once(":").ok_or(value)?;
-
-        Ok(Uri {
-            category: category.to_string(),
-            id: id.to_string(),
-        })
-    }
-}
-
-impl TryFrom<Url> for Uri {
-    type Error = Url;
-
-    fn try_from(value: Url) -> std::result::Result<Self, Self::Error> {
-        let mut path = value.path_segments().into_iter().flatten();
-        match (value.scheme(), path.next(), path.next()) {
-            ("spotify", None, None) => match Self::try_from(value.as_str()) {
-                Ok(uri) => Ok(uri),
-                Err(_) => Err(value),
-            },
-            ("https", Some(category), Some(id)) => Ok(Uri {
-                category: category.to_string(),
-                id: id.to_string(),
-            }),
-            _ => Err(value),
+                match (path.next(), path.next()) {
+                    (Some(category), Some(id)) => Ok(Uri {
+                        category: category.to_string(),
+                        id: id.to_string(),
+                    }),
+                    _ => Err(UriParseError),
+                }
+            }
+            _ => Err(UriParseError),
         }
     }
 }

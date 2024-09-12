@@ -9,9 +9,6 @@ name = "jukebox"
 [[bin]]
 name = "tagger"
 
-[build-dependencies]
-slint-build = "1.7.2"
-
 [dependencies]
 anyhow = { version = "1.0.86" }
 clap = { version = "4.5.17", features = ["derive", "env"] }

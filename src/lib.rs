@@ -35,12 +35,7 @@ pub fn start_playback(
     uri: String,
 ) -> anyhow::Result<()> {
     let mut request = StartPlaybackRequest::default();
-    let uri = match spotify::Uri::try_from(uri.as_str()) {
-        Ok(uri) => uri,
-        Err(err) => {
-            return Err(anyhow!("invalid URI: {}", err));
-        }
-    };
+    let uri: spotify::Uri = uri.as_str().parse()?;
 
     match uri.category.as_str() {
         "track" => {
