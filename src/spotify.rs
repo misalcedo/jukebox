@@ -1,13 +1,55 @@
 use crate::spotify::models::{Album, DeviceList, Playlist, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
+use std::str::FromStr;
 use url::Url;
 
 pub mod models;
 
+#[derive(Debug, Clone)]
 pub struct Uri {
     pub category: String,
     pub id: String,
+}
+
+impl Display for Uri {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "spotify:{}:{}", self.category, self.id)
+    }
+}
+
+impl PartialEq<str> for Uri {
+    fn eq(&self, other: &str) -> bool {
+        let Some(("spotify", parts)) = other.split_once(":") else {
+            return false
+        };
+        let Some((category, id)) = parts.split_once(":") else {
+            return false
+        };
+
+        self.category == category && self.id == id
+    }
+}
+
+#[derive(Debug)]
+pub struct UriParseError;
+
+impl Display for UriParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid URI")
+    }
+}
+
+impl Error for UriParseError {}
+
+impl FromStr for Uri {
+    type Err = UriParseError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Self::try_from(s).map_err(|_| UriParseError)
+    }
 }
 
 impl<'a> TryFrom<&'a str> for Uri {
@@ -121,114 +163,5 @@ impl Client {
             .send()?
             .error_for_status()?
             .json()
-    }
-}
-
-pub fn normalize_uri(uri: &Url) -> Option<String> {
-    let mut path = uri.path_segments().into_iter().flatten();
-    match (uri.scheme(), path.next(), path.next()) {
-        ("spotify", None, None) => Some(uri.to_string()),
-        ("https", Some(category), Some(id)) => Some(format!("spotify:{category}:{id}")),
-        _ => None,
-    }
-}
-
-pub fn uri_parts(uri: &str) -> Option<(&str, &str)> {
-    let (_, parts) = uri.split_once(":")?;
-    parts.split_once(":")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn normalize_track() {
-        let url =
-            Url::parse("https://open.spotify.com/track/6b2HYgqcK9mvktt4GxAu72?si=b71085cf9270496b")
-                .unwrap();
-        assert_eq!(
-            normalize_uri(&url),
-            Some("spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string())
-        );
-    }
-
-    #[test]
-    fn normalize_track_no_op() {
-        let url = Url::parse("spotify:track:6b2HYgqcK9mvktt4GxAu72").unwrap();
-        assert_eq!(
-            normalize_uri(&url),
-            Some("spotify:track:6b2HYgqcK9mvktt4GxAu72".to_string())
-        );
-    }
-
-    #[test]
-    fn normalize_album() {
-        let url = Url::parse(
-            "https://open.spotify.com/album/2gSDW1mnuKSRLRa7pgTV4f?si=DBQxmqMLQXaezZ0GooOwjg",
-        )
-            .unwrap();
-        assert_eq!(
-            normalize_uri(&url),
-            Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string())
-        );
-    }
-
-    #[test]
-    fn normalize_album_no_op() {
-        let url = Url::parse("spotify:album:2gSDW1mnuKSRLRa7pgTV4f").unwrap();
-        assert_eq!(
-            normalize_uri(&url),
-            Some("spotify:album:2gSDW1mnuKSRLRa7pgTV4f".to_string())
-        );
-    }
-
-    #[test]
-    fn normalize_playlist() {
-        let url = Url::parse(
-            "https://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2",
-        )
-            .unwrap();
-        assert_eq!(
-            normalize_uri(&url),
-            Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string())
-        );
-    }
-
-    #[test]
-    fn normalize_playlist_no_op() {
-        let url = Url::parse("spotify:playlist:6sn3Heyme3WqK01uTNwoIp").unwrap();
-        assert_eq!(
-            normalize_uri(&url),
-            Some("spotify:playlist:6sn3Heyme3WqK01uTNwoIp".to_string())
-        );
-    }
-
-    #[test]
-    fn normalize_http() {
-        let url = Url::parse(
-            "http://open.spotify.com/playlist/6sn3Heyme3WqK01uTNwoIp?si=c2f89da801b149d2",
-        )
-            .unwrap();
-        assert_eq!(normalize_uri(&url), None);
-    }
-
-    #[test]
-    fn normalize_no_id() {
-        let url = Url::parse("https://open.spotify.com/playlist?si=c2f89da801b149d2").unwrap();
-        assert_eq!(normalize_uri(&url), None);
-    }
-
-    #[test]
-    fn split() {
-        assert_eq!(
-            uri_parts("spotify:playlist:6sn3Heyme3WqK01uTNwoIp"),
-            Some(("playlist", "6sn3Heyme3WqK01uTNwoIp"))
-        );
-    }
-
-    #[test]
-    fn split_bad() {
-        assert_eq!(uri_parts("spotify:6sn3Heyme3WqK01uTNwoIp"), None);
     }
 }

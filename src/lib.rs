@@ -1,5 +1,4 @@
 use crate::spotify::models::{Device, StartPlaybackRequest};
-use crate::spotify::uri_parts;
 use anyhow::anyhow;
 
 pub mod card;
@@ -36,18 +35,22 @@ pub fn start_playback(
     uri: String,
 ) -> anyhow::Result<()> {
     let mut request = StartPlaybackRequest::default();
+    let uri = match spotify::Uri::try_from(uri.as_str()) {
+        Ok(uri) => uri,
+        Err(err) => {
+            return Err(anyhow!("invalid URI: {}", err));
+        }
+    };
 
-    let (category, _) =
-        uri_parts(&uri).ok_or_else(|| anyhow!("Failed to extract category from URI"))?;
-    match category {
+    match uri.category.as_str() {
         "track" => {
-            request.uris = Some(vec![uri]);
+            request.uris = Some(vec![uri.to_string()]);
         }
         "playlist" => {
-            request.context_uri = Some(uri);
+            request.context_uri = Some(uri.to_string());
         }
         "album" => {
-            request.context_uri = Some(uri);
+            request.context_uri = Some(uri.to_string());
         }
         _ => {
             return Err(anyhow!("Unsupported URI category"));
