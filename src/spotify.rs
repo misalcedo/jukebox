@@ -116,7 +116,6 @@ impl Client {
             .put("https://api.spotify.com/v1/me/player/shuffle")
             .query(&[("state", state)])
             .header("Authorization", self.oauth.authorization())
-            .body("")
             .send()?
             .error_for_status()?;
 
@@ -128,7 +127,6 @@ impl Client {
             .get(format!("https://api.spotify.com/v1/tracks/{}", id))
             .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
-            .body("")
             .send()?
             .error_for_status()?
             .json()
@@ -139,7 +137,6 @@ impl Client {
             .get(format!("https://api.spotify.com/v1/albums/{}", id))
             .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
-            .body("")
             .send()?
             .error_for_status()?
             .json()
@@ -150,7 +147,6 @@ impl Client {
             .get(format!("https://api.spotify.com/v1/playlists/{}", id))
             .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
-            .body("")
             .send()?
             .error_for_status()?
             .json()
