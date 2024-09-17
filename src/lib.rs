@@ -8,7 +8,7 @@ pub mod token;
 pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
     for reader in ctx.list_readers_owned()? {
         if let Ok(name) = reader.to_str() {
-            if name == "ACS ACR1252 Dual Reader PICC" {
+            if name.contains("PICC") {
                 return Ok(card::Reader::new(ctx, reader));
             }
         }
