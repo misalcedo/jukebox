@@ -90,7 +90,7 @@ impl Reader {
         match self.ctx.connect(
             &self.reader,
             pcsc::ShareMode::Direct,
-            pcsc::Protocols::T0 | pcsc::Protocols::T1,
+            pcsc::Protocols::RAW,
         ) {
             Ok(card) => Ok(Some(card)),
             Err(pcsc::Error::NoSmartcard) => Ok(None),
