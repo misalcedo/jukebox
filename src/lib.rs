@@ -6,13 +6,15 @@ pub mod spotify;
 pub mod token;
 
 pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
-    let mut readers = ctx.list_readers_owned()?;
-    // Look for "ACS ACR1252 1S CL Reader PICC 0"
-    let reader = readers
-        .pop()
-        .ok_or_else(|| anyhow!("No readers are connected."))?;
+    for reader in ctx.list_readers_owned()? {
+        if let Ok(name) = reader.to_str() {
+            if name == "ACS ACR1252 Dual Reader PICC" {
+                return Ok(card::Reader::new(ctx, reader));
+            }
+        }
+    }
 
-    Ok(card::Reader::new(ctx, reader))
+    Err(anyhow!("No readers are connected."))
 }
 
 pub fn choose_device(client: &mut spotify::Client, name: Option<&str>) -> anyhow::Result<Device> {
