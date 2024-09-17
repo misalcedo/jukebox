@@ -20,7 +20,8 @@ impl Reader {
                 let command = b"\x00\xB0\x00\x00\x00\x00";
                 let mut buffer = vec![0; 1024];
 
-                let length = card.transmit(command, &mut buffer)?.len();
+                let response = card.transmit(command, &mut buffer)?;
+                let length = response.len();
 
                 if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
                     return Err(anyhow!(e));
