@@ -166,8 +166,8 @@ impl Reader {
 
         self.ctx.get_status_change(timeout, &mut reader_states)?;
 
-        // The first time, keep waiting until the reader has a card inserted.
-        while self.state == State::UNAWARE && !reader_states[0].event_state().contains(State::PRESENT) {
+        // Wait until the presence state toggles.
+        while self.state.contains(State::PRESENT) == reader_states[0].event_state().contains(State::PRESENT) {
             self.ctx.get_status_change(timeout, &mut reader_states)?;
         }
 
