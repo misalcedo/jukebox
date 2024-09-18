@@ -88,6 +88,9 @@ fn main() {
                     None => {
                         eprintln!("No card is present.");
                     }
+                    Some(uri) if uri.is_empty() => {
+                        eprintln!("Read empty tag");
+                    }
                     Some(uri) => {
                         if let Err(error) =
                             jukebox::start_playback(&mut client, device.id.clone(), uri)
