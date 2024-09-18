@@ -9,8 +9,17 @@ pub struct Reader {
     eject: bool,
 }
 
+// The URI prefix for NFC tags.
+const URI_PREFIX: &[u8] = b"https://";
+
 // SW1 and SW2 for a successful operation.
 const SUCCESS: &'static [u8; 2] = b"\x90\x00";
+// Number of bytes in a block.
+const BLOCK_SIZE: u8 = b'\x04';
+// Maximum number of bytes to read in a single operation.
+const MAX_READ_BYTES: u8 = b'\x10';
+// The first block with user data.
+const INITIAL_DATA_BLOCK: u8 = b'\x04';
 
 impl Reader {
     pub fn new(ctx: Context, reader: CString, eject: bool) -> Reader {
@@ -26,7 +35,7 @@ impl Reader {
                 let record_response = card.transmit(b"\xFF\xB0\x00\x04\x07", &mut buffer)?;
 
                 let Some(record) = record_response.strip_suffix(SUCCESS) else {
-                    return Err(anyhow!("The read operation failed."));
+                    return Err(anyhow!("The read operation failed for the record."));
                 };
 
                 // Records seem to end in \xFE\x00
@@ -42,15 +51,41 @@ impl Reader {
                     }
                     // URI record
                     [3, record_length, b'\xD1', 1, uri_length, b'\x55', b'\x04'] if *record_length >= 4 && *uri_length > 0 => {
-                        eprintln!("{}: {:?}", record.len(), &record);
+                        let mut bytes_read = record.len();
+                        let mut remaining = *uri_length - 1;
+                        let mut data = Vec::with_capacity(URI_PREFIX.len() + remaining as usize);
+                        let mut command = [b'\xFF', b'\xB0', b'\x00', INITIAL_DATA_BLOCK, MAX_READ_BYTES];
 
-                        // let command = b"\xFF\xB0\x00\x04\x07";
-                        // let response = card.transmit(command, &mut buffer)?;
-                        // let Some(data) = response.strip_suffix(SUCCESS) else {
-                        //     return Err(anyhow!("The read operation failed."));
-                        // };
+                        data.extend_from_slice(URI_PREFIX);
 
-                        Ok(Some(String::new()))
+                        while remaining > 0 {
+                            let offset = u8::try_from(bytes_read)?;
+                            let block = INITIAL_DATA_BLOCK + (offset / BLOCK_SIZE);
+
+                            // Update the block
+                            command[3] = block;
+
+                            // Update the requested bytes
+                            command[4] = remaining.min(MAX_READ_BYTES);
+
+                            let data_response = card.transmit(&command, &mut buffer)?;
+                            let Some(mut chunk) = data_response.strip_suffix(SUCCESS) else {
+                                return Err(anyhow!("The read operation failed for data."));
+                            };
+
+                            // Skip already read bytes
+                            let skip = (offset % BLOCK_SIZE) as usize;
+                            if skip != 0 {
+                                chunk = &chunk[skip..];
+                            }
+
+                            remaining -= u8::try_from(chunk.len())?;
+                            bytes_read += chunk.len();
+
+                            data.extend_from_slice(chunk);
+                        }
+
+                        Ok(Some(String::from_utf8(data)?))
                     }
                     _ => Ok(Some(String::new())),
                 };
