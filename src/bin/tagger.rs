@@ -138,7 +138,7 @@ fn read_value() -> anyhow::Result<String> {
 
     match reader.read()? {
         None => Err(anyhow!("No card is present.")),
-        Some(value) => Ok(value)
+        Some(value) => Ok(value),
     }
 }
 
@@ -153,7 +153,12 @@ fn write_value(value: String) -> anyhow::Result<()> {
     }
 }
 
-fn describe(client_id: String, token_cache: PathBuf, market: String, value: &str) -> anyhow::Result<String> {
+fn describe(
+    client_id: String,
+    token_cache: PathBuf,
+    market: String,
+    value: &str,
+) -> anyhow::Result<String> {
     let oauth = token::Client::new(client_id, token_cache);
     let mut client = spotify::Client::new(oauth, market);
     let uri: spotify::Uri = value.parse()?;
@@ -197,8 +202,6 @@ fn describe(client_id: String, token_cache: PathBuf, market: String, value: &str
 
             Ok(description)
         }
-        _ => {
-            Err(anyhow!("Unsupported URI category"))
-        }
+        _ => Err(anyhow!("Unsupported URI category")),
     }
 }

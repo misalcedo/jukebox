@@ -23,10 +23,10 @@ impl Display for Uri {
 impl PartialEq<str> for Uri {
     fn eq(&self, other: &str) -> bool {
         let Some(("spotify", parts)) = other.split_once(":") else {
-            return false
+            return false;
         };
         let Some((category, id)) = parts.split_once(":") else {
-            return false
+            return false;
         };
 
         self.category == category && self.id == id
@@ -50,7 +50,9 @@ impl FromStr for Uri {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.split_once(":") {
             Some(("spotify", parts)) => {
-                let (category, id) = parts.split_once(":").ok_or_else(|| UriParseError(s.to_string()))?;
+                let (category, id) = parts
+                    .split_once(":")
+                    .ok_or_else(|| UriParseError(s.to_string()))?;
 
                 Ok(Uri {
                     category: category.to_string(),
@@ -83,7 +85,11 @@ pub struct Client {
 impl Client {
     pub fn new(oauth: token::Client, market: String) -> Client {
         let http = reqwest::blocking::Client::new();
-        Client { oauth, http, market }
+        Client {
+            oauth,
+            http,
+            market,
+        }
     }
 
     pub fn get_available_devices(&mut self) -> Result<DeviceList> {

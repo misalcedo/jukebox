@@ -42,22 +42,26 @@ impl Reader {
 
                 let result = match record {
                     // No record
-                    [3, 0, ..] => {
-                        Ok(Some(String::new()))
-                    }
+                    [3, 0, ..] => Ok(Some(String::new())),
                     // Empty record
-                    [3, 4, b'\xD8', 0, 0, 0, ..] => {
-                        Ok(Some(String::new()))
-                    }
+                    [3, 4, b'\xD8', 0, 0, 0, ..] => Ok(Some(String::new())),
                     // URI record (single or the first of multiple)
-                    [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', prefix] if *record_length >= 4 && *uri_length > 0 => {
+                    [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', prefix]
+                        if *record_length >= 4 && *uri_length > 0 =>
+                    {
                         let mut bytes_read = record.len();
                         let mut remaining = *uri_length - 1;
-                        let mut command = [b'\xFF', b'\xB0', b'\x00', INITIAL_DATA_BLOCK, MAX_READ_BYTES];
+                        let mut command = [
+                            b'\xFF',
+                            b'\xB0',
+                            b'\x00',
+                            INITIAL_DATA_BLOCK,
+                            MAX_READ_BYTES,
+                        ];
 
                         let uri_prefix = match prefix {
                             b'\x04' => HTTPS_PREFIX,
-                            _ => b""
+                            _ => b"",
                         };
 
                         let mut data = Vec::with_capacity(uri_prefix.len() + remaining as usize);
@@ -121,11 +125,7 @@ impl Reader {
                 }
 
                 for i in 0..blocks {
-                    let bytes = if i == blocks - 1 {
-                        remaining
-                    } else {
-                        16
-                    };
+                    let bytes = if i == blocks - 1 { remaining } else { 16 };
 
                     let length = u16::try_from(bytes)?.to_be_bytes();
                     let block = u8::try_from(i)?.to_be_bytes();
@@ -138,7 +138,6 @@ impl Reader {
 
                     println!("{:?}", card.transmit(&command, &mut vec![0; 1024])?);
                 }
-
 
                 if self.eject {
                     if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
@@ -191,11 +190,10 @@ impl Reader {
     }
 
     fn connect(&self) -> anyhow::Result<Option<Card>> {
-        match self.ctx.connect(
-            &self.reader,
-            pcsc::ShareMode::Shared,
-            pcsc::Protocols::ANY,
-        ) {
+        match self
+            .ctx
+            .connect(&self.reader, pcsc::ShareMode::Shared, pcsc::Protocols::ANY)
+        {
             Ok(card) => Ok(Some(card)),
             Err(pcsc::Error::NoSmartcard) => Ok(None),
             Err(e) => Err(anyhow!(e)),
