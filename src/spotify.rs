@@ -101,11 +101,7 @@ impl Client {
             .json()
     }
 
-    pub fn play(
-        &mut self,
-        device_id: Option<String>,
-        request: &StartPlaybackRequest,
-    ) -> Result<()> {
+    pub fn play(&mut self, device_id: String, request: &StartPlaybackRequest) -> Result<()> {
         self.http
             .put("https://api.spotify.com/v1/me/player/play")
             .query(&[("device_id", device_id)])
@@ -122,6 +118,18 @@ impl Client {
             .put("https://api.spotify.com/v1/me/player/shuffle")
             .query(&[("state", state)])
             .header("Authorization", self.oauth.authorization())
+            .send()?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
+    pub fn pause(&mut self, device_id: String) -> Result<()> {
+        self.http
+            .put("https://api.spotify.com/v1/me/player/pause")
+            .query(&[("device_id", device_id)])
+            .header("Authorization", self.oauth.authorization())
+            .body("")
             .send()?
             .error_for_status()?;
 

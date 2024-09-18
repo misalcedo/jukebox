@@ -5,11 +5,11 @@ pub mod card;
 pub mod spotify;
 pub mod token;
 
-pub fn choose_reader(ctx: pcsc::Context, eject: bool) -> anyhow::Result<card::Reader> {
+pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
     for reader in ctx.list_readers_owned()? {
         if let Ok(name) = reader.to_str() {
             if name.contains("PICC") {
-                return Ok(card::Reader::new(ctx, reader, eject));
+                return Ok(card::Reader::new(ctx, reader));
             }
         }
     }
@@ -54,12 +54,23 @@ pub fn start_playback(
         }
     }
 
-    client.play(Some(device_id), &request)?;
+    client.play(device_id, &request)?;
 
     // Sometimes shuffle is unable to find a playback session.
     if let Err(e) = client.shuffle(true) {
         if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
             client.shuffle(true)?;
+        }
+    };
+
+    Ok(())
+}
+
+pub fn pause_playback(client: &mut spotify::Client, device_id: String) -> anyhow::Result<()> {
+    // Song may not be playing.
+    if let Err(e) = client.pause(device_id) {
+        if e.status() == Some(reqwest::StatusCode::FORBIDDEN) {
+            return Ok(());
         }
     };
 

@@ -3,12 +3,6 @@ use pcsc::{Card, Context, ReaderState, State};
 use std::ffi::CString;
 use std::time::Duration;
 
-pub struct Reader {
-    ctx: Context,
-    reader: CString,
-    eject: bool,
-}
-
 // The URI prefix for NFC tags.
 const HTTPS_PREFIX: &[u8] = b"https://";
 
@@ -21,9 +15,19 @@ const MAX_READ_BYTES: u8 = b'\x10';
 // The first block with user data.
 const INITIAL_DATA_BLOCK: u8 = b'\x04';
 
+pub struct Reader {
+    ctx: Context,
+    reader: CString,
+    state: State,
+}
+
 impl Reader {
-    pub fn new(ctx: Context, reader: CString, eject: bool) -> Reader {
-        Reader { ctx, reader, eject }
+    pub fn new(ctx: Context, reader: CString) -> Reader {
+        Reader {
+            ctx,
+            reader,
+            state: State::UNAWARE,
+        }
     }
 
     pub fn read(&self) -> anyhow::Result<Option<String>> {
@@ -40,7 +44,7 @@ impl Reader {
 
                 // Records seem to end in \xFE\x00
 
-                let result = match record {
+                match record {
                     // No record
                     [3, 0, ..] => Ok(Some(String::new())),
                     // Empty record
@@ -100,15 +104,7 @@ impl Reader {
                         eprintln!("Unknown record: {:?}", record);
                         Ok(Some(String::new()))
                     }
-                };
-
-                if self.eject {
-                    if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
-                        return Err(anyhow!(e));
-                    }
                 }
-
-                result
             }
         }
     }
@@ -139,12 +135,6 @@ impl Reader {
                     println!("{:?}", card.transmit(&command, &mut vec![0; 1024])?);
                 }
 
-                if self.eject {
-                    if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
-                        return Err(anyhow!(e));
-                    }
-                }
-
                 Ok(true)
             }
         }
@@ -168,23 +158,16 @@ impl Reader {
                 eprintln!("{:?}", command);
                 eprintln!("{:?}", card.transmit(&command, &mut [0; 2])?);
 
-                if self.eject {
-                    if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
-                        return Err(anyhow!(e));
-                    }
-                }
-
                 Ok(true)
             }
         }
     }
 
-    pub fn wait(&self, timeout: Option<Duration>) -> anyhow::Result<()> {
-        let mut reader_states = [ReaderState::new(self.reader.clone(), State::UNAWARE)];
+    pub fn wait(&mut self, timeout: Option<Duration>) -> anyhow::Result<()> {
+        let mut reader_states = [ReaderState::new(self.reader.clone(), self.state)];
 
-        while !reader_states[0].event_state().contains(State::PRESENT) {
-            self.ctx.get_status_change(timeout, &mut reader_states)?;
-        }
+        self.ctx.get_status_change(timeout, &mut reader_states)?;
+        self.state = reader_states[0].event_state();
 
         Ok(())
     }

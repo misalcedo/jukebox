@@ -74,8 +74,7 @@ fn main() {
 
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader =
-                jukebox::choose_reader(ctx, true).expect("Failed to choose a card reader.");
+            let mut reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
 
             loop {
                 reader
@@ -84,17 +83,22 @@ fn main() {
 
                 match reader.read() {
                     Ok(None) => {
-                        eprintln!("No card is present.");
+                        if let Err(e) = jukebox::pause_playback(&mut client, device.id.clone()) {
+                            eprintln!("Failed to pause playback: {}", e);
+                        }
+                        eprintln!("Paused playback");
                     }
                     Ok(Some(uri)) if uri.is_empty() => {
                         eprintln!("Read empty tag");
                     }
                     Ok(Some(uri)) => {
                         if let Err(error) =
-                            jukebox::start_playback(&mut client, device.id.clone(), uri)
+                            jukebox::start_playback(&mut client, device.id.clone(), uri.clone())
                         {
                             eprintln!("Failed to start playback: {}", error);
                         }
+
+                        eprintln!("Played song {}", uri);
                     }
                     Err(e) => {
                         eprintln!("Failed to read the URI from the card: {}", e);
@@ -105,8 +109,7 @@ fn main() {
         Commands::Write(write) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader =
-                jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
 
             if !reader
                 .write(write.uri.to_string())
@@ -118,8 +121,7 @@ fn main() {
         Commands::Erase(_) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader =
-                jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
 
             if !reader.erase().expect("Failed to erase the card.") {
                 eprintln!("No card is present.");
@@ -128,8 +130,7 @@ fn main() {
         Commands::Read(read) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader =
-                jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
 
             match reader.read() {
                 Ok(None) => {
