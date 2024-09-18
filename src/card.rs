@@ -42,8 +42,6 @@ impl Reader {
                     return Err(anyhow!("The read operation failed for the record."));
                 };
 
-                // Records seem to end in \xFE\x00
-
                 match record {
                     // No record
                     [3, 0, ..] => Ok(Some(String::new())),
@@ -51,55 +49,55 @@ impl Reader {
                     [3, 4, b'\xD8', 0, 0, 0, ..] => Ok(Some(String::new())),
                     // URI record (single or the first of multiple)
                     [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', prefix]
-                        if *record_length >= 4 && *uri_length > 0 =>
-                    {
-                        let mut bytes_read = record.len();
-                        let mut remaining = *uri_length - 1;
-                        let mut command = [
-                            b'\xFF',
-                            b'\xB0',
-                            b'\x00',
-                            INITIAL_DATA_BLOCK,
-                            MAX_READ_BYTES,
-                        ];
+                    if *record_length >= 4 && *uri_length > 0 =>
+                        {
+                            let mut bytes_read = record.len();
+                            let mut remaining = *uri_length - 1;
+                            let mut command = [
+                                b'\xFF',
+                                b'\xB0',
+                                b'\x00',
+                                INITIAL_DATA_BLOCK,
+                                MAX_READ_BYTES,
+                            ];
 
-                        let uri_prefix = match prefix {
-                            b'\x04' => HTTPS_PREFIX,
-                            _ => b"",
-                        };
-
-                        let mut data = Vec::with_capacity(uri_prefix.len() + remaining as usize);
-                        data.extend_from_slice(uri_prefix);
-
-                        while remaining > 0 {
-                            let offset = u8::try_from(bytes_read)?;
-                            let block = INITIAL_DATA_BLOCK + (offset / BLOCK_SIZE);
-
-                            // Update the block
-                            command[3] = block;
-
-                            // Update the requested bytes
-                            command[4] = remaining.min(MAX_READ_BYTES);
-
-                            let data_response = card.transmit(&command, &mut buffer)?;
-                            let Some(mut chunk) = data_response.strip_suffix(SUCCESS) else {
-                                return Err(anyhow!("The read operation failed for data."));
+                            let uri_prefix = match prefix {
+                                b'\x04' => HTTPS_PREFIX,
+                                _ => b"",
                             };
 
-                            // Skip already read bytes
-                            let skip = (offset % BLOCK_SIZE) as usize;
-                            if skip != 0 {
-                                chunk = &chunk[skip..];
+                            let mut data = Vec::with_capacity(uri_prefix.len() + remaining as usize);
+                            data.extend_from_slice(uri_prefix);
+
+                            while remaining > 0 {
+                                let offset = u8::try_from(bytes_read)?;
+                                let block = INITIAL_DATA_BLOCK + (offset / BLOCK_SIZE);
+
+                                // Update the block
+                                command[3] = block;
+
+                                // Update the requested bytes
+                                command[4] = remaining.min(MAX_READ_BYTES);
+
+                                let data_response = card.transmit(&command, &mut buffer)?;
+                                let Some(mut chunk) = data_response.strip_suffix(SUCCESS) else {
+                                    return Err(anyhow!("The read operation failed for data."));
+                                };
+
+                                // Skip already read bytes
+                                let skip = (offset % BLOCK_SIZE) as usize;
+                                if skip != 0 {
+                                    chunk = &chunk[skip..];
+                                }
+
+                                remaining -= u8::try_from(chunk.len())?;
+                                bytes_read += chunk.len();
+
+                                data.extend_from_slice(chunk);
                             }
 
-                            remaining -= u8::try_from(chunk.len())?;
-                            bytes_read += chunk.len();
-
-                            data.extend_from_slice(chunk);
+                            Ok(Some(String::from_utf8(data)?))
                         }
-
-                        Ok(Some(String::from_utf8(data)?))
-                    }
                     _ => {
                         eprintln!("Unknown record: {:?}", record);
                         Ok(Some(String::new()))
@@ -167,6 +165,12 @@ impl Reader {
         let mut reader_states = [ReaderState::new(self.reader.clone(), self.state)];
 
         self.ctx.get_status_change(timeout, &mut reader_states)?;
+
+        // The first time, keep waiting until the reader has a card inserted.
+        while self.state == State::UNAWARE && !reader_states[0].event_state().contains(State::PRESENT) {
+            self.ctx.get_status_change(timeout, &mut reader_states)?;
+        }
+
         self.state = reader_states[0].event_state();
 
         Ok(())
