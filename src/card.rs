@@ -49,8 +49,8 @@ impl Reader {
                     [3, 4, b'\xD8', 0, 0, 0, ..] => {
                         Ok(Some(String::new()))
                     }
-                    // URI record
-                    [3, record_length, b'\xD1', 1, uri_length, b'\x55', b'\x04'] if *record_length >= 4 && *uri_length > 0 => {
+                    // URI record (single or the first of multiple)
+                    [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', b'\x04'] if *record_length >= 4 && *uri_length > 0 => {
                         let mut bytes_read = record.len();
                         let mut remaining = *uri_length - 1;
                         let mut data = Vec::with_capacity(URI_PREFIX.len() + remaining as usize);
@@ -87,7 +87,10 @@ impl Reader {
 
                         Ok(Some(String::from_utf8(data)?))
                     }
-                    _ => Ok(Some(String::new())),
+                    _ => {
+                        eprintln!("Unknown record: {:?}", record);
+                        Ok(Some(String::new()))
+                    }
                 };
 
                 if self.eject {
