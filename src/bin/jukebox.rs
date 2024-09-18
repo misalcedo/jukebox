@@ -52,7 +52,10 @@ struct Write {
 struct Erase {}
 
 #[derive(Debug, Parser)]
-struct Read {}
+struct Read {
+    #[arg(short, long)]
+    normalize: bool,
+}
 
 fn main() {
     let arguments = Arguments::parse();
@@ -116,7 +119,7 @@ fn main() {
                 eprintln!("No card is present.");
             }
         }
-        Commands::Read(_) => {
+        Commands::Read(read) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
             let reader = jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
@@ -126,7 +129,12 @@ fn main() {
                     eprintln!("No card is present.");
                 }
                 Ok(Some(value)) => {
-                    println!("{value:?}");
+                    if read.normalize {
+                        let uri: spotify::Uri = value.as_str().parse().expect("Failed to parse URI");
+                        println!("{:?}", uri.to_string());
+                    } else {
+                        println!("{value:?}");
+                    }
                 }
                 Err(e) => {
                     eprintln!("Failed to read the URI from the card: {}", e);
