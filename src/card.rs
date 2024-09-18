@@ -10,7 +10,7 @@ pub struct Reader {
 }
 
 // The URI prefix for NFC tags.
-const URI_PREFIX: &[u8] = b"https://";
+const HTTPS_PREFIX: &[u8] = b"https://";
 
 // SW1 and SW2 for a successful operation.
 const SUCCESS: &'static [u8; 2] = b"\x90\x00";
@@ -50,13 +50,18 @@ impl Reader {
                         Ok(Some(String::new()))
                     }
                     // URI record (single or the first of multiple)
-                    [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', b'\x04'] if *record_length >= 4 && *uri_length > 0 => {
+                    [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', prefix] if *record_length >= 4 && *uri_length > 0 => {
                         let mut bytes_read = record.len();
                         let mut remaining = *uri_length - 1;
-                        let mut data = Vec::with_capacity(URI_PREFIX.len() + remaining as usize);
                         let mut command = [b'\xFF', b'\xB0', b'\x00', INITIAL_DATA_BLOCK, MAX_READ_BYTES];
 
-                        data.extend_from_slice(URI_PREFIX);
+                        let uri_prefix = match prefix {
+                            b'\x04' => HTTPS_PREFIX,
+                            _ => b""
+                        };
+
+                        let mut data = Vec::with_capacity(uri_prefix.len() + remaining as usize);
+                        data.extend_from_slice(uri_prefix);
 
                         while remaining > 0 {
                             let offset = u8::try_from(bytes_read)?;
