@@ -9,6 +9,9 @@ pub struct Reader {
     eject: bool,
 }
 
+// SW1 and SW2 for a successful operation.
+const SUCCESS: &'static [u8; 2] = b"\x90\x00";
+
 impl Reader {
     pub fn new(ctx: Context, reader: CString, eject: bool) -> Reader {
         Reader { ctx, reader, eject }
@@ -18,65 +21,47 @@ impl Reader {
         match self.connect()? {
             None => Ok(None),
             Some(card) => {
-                let command = b"\xFF\xB0\x00\x04\x08";
                 let mut buffer = vec![0; 1024];
 
-                let response = card.transmit(command, &mut buffer)?;
+                let record_response = card.transmit(b"\xFF\xB0\x00\x04\x07", &mut buffer)?;
+
+                let Some(record) = record_response.strip_suffix(SUCCESS) else {
+                    return Err(anyhow!("The read operation failed."));
+                };
+
+                // Records seem to end in \xFE\x00
+
+                let result = match record {
+                    // No record
+                    [3, 0, ..] => {
+                        Ok(Some(String::new()))
+                    }
+                    // Empty record
+                    [3, 4, b'\xD8', 0, 0, 0, ..] => {
+                        Ok(Some(String::new()))
+                    }
+                    // URI record
+                    [3, record_length, b'\xD1', 1, uri_length, b'\x55', b'\x04'] if *record_length >= 4 && *uri_length > 0 => {
+                        eprintln!("{}: {:?}", record.len(), &record);
+
+                        // let command = b"\xFF\xB0\x00\x04\x07";
+                        // let response = card.transmit(command, &mut buffer)?;
+                        // let Some(data) = response.strip_suffix(SUCCESS) else {
+                        //     return Err(anyhow!("The read operation failed."));
+                        // };
+
+                        Ok(Some(String::new()))
+                    }
+                    _ => Ok(Some(String::new())),
+                };
+
                 if self.eject {
                     if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {
                         return Err(anyhow!(e));
                     }
                 }
 
-                // Deleted, data not zeroed after prefix
-                //let prefix = b"\x03\x04\xD8\x00\x00\x00\xFE\x00";
-
-                // New
-                //let prefix = b"\x03\x00\xFE\x00\x00\x00\x00\x90";
-
-                // Records seem to end in \xFE\x00
-
-                // Once.
-                // Start: \x03
-                // Length: \x4c
-                // Header: \xD1
-                // Record name length: \x01
-                // Length of the Smart Poster data: \x48
-                // Record name: \x55 ("U")
-                // Abbreviation for the URI record type: \x04 ("https://")
-                // URI data: 7..
-
-                match response.get(0..8) {
-                    // Empty card
-                    Some([3, 0, ..]) => {
-                        Ok(Some(String::new()))
-                    }
-                    // Empty record
-                    Some([3, 4, b'\xD8', 0, 0, 0, ..]) => {
-                        Ok(Some(String::new()))
-                    }
-                    Some([3, length, ..]) if *length > 0 => {
-                        eprintln!("{:?}", &response);
-                        for (i, byte) in response.iter().enumerate() {
-                            eprintln!("{i}: {byte:x}");
-                        }
-                        Ok(Some(String::new()))
-                    }
-                    _ => Ok(Some(String::new())),
-                }
-
-
-                // let length = response.len();
-                //
-                //
-                // buffer.truncate(length);
-                // if let Some(0) = buffer.last() {
-                //     buffer.pop();
-                // }
-                //
-                // let data = String::from_utf8(buffer)?;
-                //
-                // Ok(Some(data))
+                result
             }
         }
     }
