@@ -81,22 +81,23 @@ fn main() {
                     .wait(None)
                     .expect("Failed to wait for a card to be present.");
 
-                match reader
-                    .read()
-                    .expect("Failed to read the URI from the card.")
+                match reader.read()
                 {
-                    None => {
+                    Ok(None) => {
                         eprintln!("No card is present.");
                     }
-                    Some(uri) if uri.is_empty() => {
+                    Ok(Some(uri)) if uri.is_empty() => {
                         eprintln!("Read empty tag");
                     }
-                    Some(uri) => {
+                    Ok(Some(uri)) => {
                         if let Err(error) =
                             jukebox::start_playback(&mut client, device.id.clone(), uri)
                         {
                             eprintln!("Failed to start playback: {}", error);
                         }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to read the URI from the card: {}", e);
                     }
                 }
             }
