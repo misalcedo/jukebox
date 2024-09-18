@@ -16,6 +16,7 @@ enum Commands {
     Write(Write),
     Erase(Erase),
     Read(Read),
+    Test(Test),
 }
 
 #[derive(Debug, Parser)]
@@ -56,6 +57,9 @@ struct Read {
     #[arg(short, long)]
     normalize: bool,
 }
+
+#[derive(Debug, Parser)]
+struct Test {}
 
 fn main() {
     let arguments = Arguments::parse();
@@ -147,6 +151,32 @@ fn main() {
                 }
                 Err(e) => {
                     eprintln!("Failed to read the URI from the card: {}", e);
+                }
+            }
+        }
+        Commands::Test(_) => {
+            let ctx =
+                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
+            let mut reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+
+            loop {
+                reader
+                    .wait(None)
+                    .expect("Failed to wait for a card to be present.");
+
+                match reader.read() {
+                    Ok(None) => {
+                        eprintln!("Paused playback");
+                    }
+                    Ok(Some(uri)) if uri.is_empty() => {
+                        eprintln!("Read empty tag");
+                    }
+                    Ok(Some(uri)) => {
+                        eprintln!("Played song {}", uri);
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to read the URI from the card: {}", e);
+                    }
                 }
             }
         }
