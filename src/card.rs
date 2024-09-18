@@ -13,7 +13,7 @@ pub struct Reader {
 const HTTPS_PREFIX: &[u8] = b"https://";
 
 // SW1 and SW2 for a successful operation.
-const SUCCESS: &'static [u8; 2] = b"\x90\x00";
+const SUCCESS: &[u8; 2] = b"\x90\x00";
 // Number of bytes in a block.
 const BLOCK_SIZE: u8 = b'\x04';
 // Maximum number of bytes to read in a single operation.
@@ -166,7 +166,7 @@ impl Reader {
                 command.extend_from_slice(&value);
 
                 eprintln!("{:?}", command);
-                eprintln!("{:?}", card.transmit(&command, &mut vec![0; 2])?);
+                eprintln!("{:?}", card.transmit(&command, &mut [0; 2])?);
 
                 if self.eject {
                     if let Err((_, e)) = card.disconnect(pcsc::Disposition::EjectCard) {

@@ -147,7 +147,7 @@ fn write_value(value: String) -> anyhow::Result<()> {
     let reader = jukebox::choose_reader(ctx, false)?;
 
     if reader.write(value)? {
-        return Err(anyhow!("No card is present."));
+        Err(anyhow!("No card is present."))
     } else {
         Ok(())
     }
@@ -168,12 +168,12 @@ fn describe(
             let track = client.get_track(&uri.id)?;
             let mut description = String::new();
 
-            write!(&mut description, "Track: {}\n", track.name)?;
-            write!(&mut description, "Album: {}\n", track.album.name)?;
+            writeln!(&mut description, "Track: {}", track.name)?;
+            writeln!(&mut description, "Album: {}", track.album.name)?;
 
             if !track.artists.is_empty() {
                 let artists: Vec<&str> = track.artists.iter().map(|a| a.name.as_str()).collect();
-                write!(&mut description, "Artists: {}\n", artists.join(", "))?;
+                writeln!(&mut description, "Artists: {}", artists.join(", "))?;
             }
 
             Ok(description)
@@ -182,8 +182,8 @@ fn describe(
             let playlist = client.get_playlist(&uri.id)?;
             let mut description = String::new();
 
-            write!(&mut description, "Playlist: {}\n", playlist.name)?;
-            write!(&mut description, "Owner: {}\n", playlist.owner.display_name)?;
+            writeln!(&mut description, "Playlist: {}", playlist.name)?;
+            writeln!(&mut description, "Owner: {}", playlist.owner.display_name)?;
 
             Ok(description)
         }
@@ -191,14 +191,14 @@ fn describe(
             let album = client.get_album(&uri.id)?;
             let mut description = String::new();
 
-            write!(&mut description, "Album: {}\n", album.name)?;
+            writeln!(&mut description, "Album: {}", album.name)?;
 
             if !album.artists.is_empty() {
                 let artists: Vec<&str> = album.artists.iter().map(|a| a.name.as_str()).collect();
-                write!(&mut description, "Artists: {}\n", artists.join(", "))?;
+                writeln!(&mut description, "Artists: {}", artists.join(", "))?;
             }
 
-            write!(&mut description, "Tracks: {}\n", album.total_tracks)?;
+            writeln!(&mut description, "Tracks: {}", album.total_tracks)?;
 
             Ok(description)
         }
