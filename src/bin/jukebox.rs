@@ -38,7 +38,7 @@ struct Groove {
     #[arg(short, long, env = "JUKEBOX_MARKET")]
     market: String,
 
-    #[arg(short, long, env = "JUKEBOX_DEVICE=")]
+    #[arg(short, long, env = "JUKEBOX_DEVICE")]
     device: Option<String>,
 }
 
@@ -71,7 +71,7 @@ fn main() {
 
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx, true).expect("Failed to choose a card reader.");
 
             loop {
                 reader
@@ -98,7 +98,7 @@ fn main() {
         Commands::Write(write) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
 
             if !reader
                 .write(write.uri.to_string())
@@ -110,7 +110,7 @@ fn main() {
         Commands::Erase(_) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
 
             if !reader.erase().expect("Failed to erase the card.") {
                 eprintln!("No card is present.");
@@ -119,7 +119,7 @@ fn main() {
         Commands::Read(_) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx, false).expect("Failed to choose a card reader.");
 
             match reader.read() {
                 Ok(None) => {

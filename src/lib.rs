@@ -5,11 +5,11 @@ pub mod card;
 pub mod spotify;
 pub mod token;
 
-pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
+pub fn choose_reader(ctx: pcsc::Context, eject: bool) -> anyhow::Result<card::Reader> {
     for reader in ctx.list_readers_owned()? {
         if let Ok(name) = reader.to_str() {
             if name.contains("PICC") {
-                return Ok(card::Reader::new(ctx, reader));
+                return Ok(card::Reader::new(ctx, reader, eject));
             }
         }
     }

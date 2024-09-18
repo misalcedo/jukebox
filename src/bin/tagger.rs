@@ -134,7 +134,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
 fn read_value() -> anyhow::Result<String> {
     let ctx = pcsc::Context::establish(pcsc::Scope::User)?;
-    let reader = jukebox::choose_reader(ctx)?;
+    let reader = jukebox::choose_reader(ctx, false)?;
 
     match reader.read()? {
         None => Err(anyhow!("No card is present.")),
@@ -144,7 +144,7 @@ fn read_value() -> anyhow::Result<String> {
 
 fn write_value(value: String) -> anyhow::Result<()> {
     let ctx = pcsc::Context::establish(pcsc::Scope::User)?;
-    let reader = jukebox::choose_reader(ctx)?;
+    let reader = jukebox::choose_reader(ctx, false)?;
 
     if reader.write(value)? {
         return Err(anyhow!("No card is present."));
