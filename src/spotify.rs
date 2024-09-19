@@ -34,11 +34,11 @@ impl PartialEq<str> for Uri {
 }
 
 #[derive(Debug)]
-pub struct UriParseError(String);
+pub struct UriParseError;
 
 impl Display for UriParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "invalid URI: {:?}", self.0)
+        write!(f, "invalid URI")
     }
 }
 
@@ -52,7 +52,7 @@ impl FromStr for Uri {
             Some(("spotify", parts)) => {
                 let (category, id) = parts
                     .split_once(":")
-                    .ok_or_else(|| UriParseError(s.to_string()))?;
+                    .ok_or(UriParseError)?;
 
                 Ok(Uri {
                     category: category.to_string(),
@@ -60,7 +60,7 @@ impl FromStr for Uri {
                 })
             }
             Some(("https", _)) => {
-                let url = Url::parse(s).map_err(|_| UriParseError(s.to_string()))?;
+                let url = Url::parse(s).map_err(|_| UriParseError)?;
                 let mut path = url.path_segments().into_iter().flatten();
 
                 match (path.next(), path.next()) {
@@ -68,10 +68,10 @@ impl FromStr for Uri {
                         category: category.to_string(),
                         id: id.to_string(),
                     }),
-                    _ => Err(UriParseError(s.to_string())),
+                    _ => Err(UriParseError),
                 }
             }
-            _ => Err(UriParseError(s.to_string())),
+            _ => Err(UriParseError),
         }
     }
 }

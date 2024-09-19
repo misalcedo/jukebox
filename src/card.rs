@@ -39,7 +39,7 @@ impl Reader {
                 let record_response = card.transmit(b"\xFF\xB0\x00\x04\x07", &mut buffer)?;
 
                 let Some(record) = record_response.strip_suffix(SUCCESS) else {
-                    return Err(anyhow!("The read operation failed for the record."));
+                    return Err(anyhow!("The read operation failed for the record"));
                 };
 
                 match record {
@@ -81,7 +81,7 @@ impl Reader {
 
                                 let data_response = card.transmit(&command, &mut buffer)?;
                                 let Some(mut chunk) = data_response.strip_suffix(SUCCESS) else {
-                                    return Err(anyhow!("The read operation failed for data."));
+                                    return Err(anyhow!("The read operation failed for data"));
                                 };
 
                                 // Skip already read bytes
@@ -99,64 +99,10 @@ impl Reader {
                             Ok(Some(String::from_utf8(data)?))
                         }
                     _ => {
-                        eprintln!("Unknown record: {:?}", record);
+                        tracing::error!(record = format!("{:?}", record), "Unknown record");
                         Ok(Some(String::new()))
                     }
                 }
-            }
-        }
-    }
-
-    pub fn write(&self, value: String) -> anyhow::Result<bool> {
-        match self.connect()? {
-            None => Ok(false),
-            Some(card) => {
-                let mut blocks = value.len() / 16;
-                let remaining = value.len() % 16;
-
-                if remaining > 0 {
-                    blocks += 1;
-                }
-
-                for i in 0..blocks {
-                    let bytes = if i == blocks - 1 { remaining } else { 16 };
-
-                    let length = u16::try_from(bytes)?.to_be_bytes();
-                    let block = u8::try_from(i)?.to_be_bytes();
-
-                    let mut command = Vec::with_capacity(6 + value.len());
-                    command.extend_from_slice(b"\xFF\xD6\x00");
-                    command.extend_from_slice(&block);
-                    command.extend_from_slice(&length);
-                    command.extend_from_slice(value.as_bytes());
-
-                    println!("{:?}", card.transmit(&command, &mut vec![0; 1024])?);
-                }
-
-                Ok(true)
-            }
-        }
-    }
-
-    pub fn erase(&self) -> anyhow::Result<bool> {
-        match self.connect()? {
-            None => Ok(false),
-            Some(card) => {
-                let value = [u8::MAX; 13];
-
-                let block = u8::try_from(4)?.to_be_bytes();
-                let length = u8::try_from(value.len())?.to_be_bytes();
-
-                let mut command = Vec::with_capacity(5 + value.len());
-                command.extend_from_slice(b"\xFF\xD6\x00");
-                command.extend_from_slice(&block);
-                command.extend_from_slice(&length);
-                command.extend_from_slice(&value);
-
-                eprintln!("{:?}", command);
-                eprintln!("{:?}", card.transmit(&command, &mut [0; 2])?);
-
-                Ok(true)
             }
         }
     }

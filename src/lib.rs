@@ -14,7 +14,7 @@ pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
         }
     }
 
-    Err(anyhow!("No readers are connected."))
+    Err(anyhow!("No readers are connected"))
 }
 
 pub fn choose_device(client: &mut spotify::Client, name: Option<&str>) -> anyhow::Result<Device> {

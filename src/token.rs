@@ -36,9 +36,9 @@ impl Client {
             .ok()
             .and_then(|token| serde_json::from_str(&token).ok())
             .unwrap_or_else(|| {
-                let token = authorize(&client).expect("Failed to authorize the client.");
+                let token = authorize(&client).expect("Failed to authorize the client");
                 deadline += token.expires_in().unwrap_or_default();
-                save(&path, &token).expect("Failed to save the token.");
+                save(&path, &token).expect("Failed to save the token");
                 token
             });
 
@@ -52,9 +52,9 @@ impl Client {
 
     fn refresh(&mut self) {
         if self.deadline < Instant::now() {
-            self.token = refresh(&self.client, &self.token).expect("Failed to refresh the token.");
+            self.token = refresh(&self.client, &self.token).expect("Failed to refresh the token");
             self.deadline = Instant::now() + self.token.expires_in().unwrap_or_default();
-            save(&self.path, &self.token).expect("Failed to save the token.");
+            save(&self.path, &self.token).expect("Failed to save the token");
         }
     }
 

@@ -137,7 +137,7 @@ fn read_value() -> anyhow::Result<String> {
     let reader = jukebox::choose_reader(ctx)?;
 
     match reader.read()? {
-        None => Err(anyhow!("No card is present.")),
+        None => Err(anyhow!("No card is present")),
         Some(value) => Ok(value),
     }
 }
@@ -147,7 +147,7 @@ fn write_value(value: String) -> anyhow::Result<()> {
     let reader = jukebox::choose_reader(ctx)?;
 
     if reader.write(value)? {
-        Err(anyhow!("No card is present."))
+        Err(anyhow!("No card is present"))
     } else {
         Ok(())
     }

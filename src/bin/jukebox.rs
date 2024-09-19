@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use jukebox::spotify::{Uri, UriParseError};
 use jukebox::{spotify, token};
 use std::path::PathBuf;
 
@@ -7,16 +8,16 @@ use std::path::PathBuf;
 struct Arguments {
     #[command(subcommand)]
     command: Commands,
+
+    #[arg(short = 'v', long = None, global = true, action = clap::ArgAction::Count)]
+    verbosity: u8,
 }
 
 #[derive(Debug, Subcommand)]
 enum Commands {
     Login(Login),
     Groove(Groove),
-    Write(Write),
-    Erase(Erase),
     Read(Read),
-    Test(Test),
 }
 
 #[derive(Debug, Parser)]
@@ -44,25 +45,15 @@ struct Groove {
 }
 
 #[derive(Debug, Parser)]
-struct Write {
-    #[arg(short, long)]
-    uri: spotify::Uri,
-}
-
-#[derive(Debug, Parser)]
-struct Erase {}
-
-#[derive(Debug, Parser)]
 struct Read {
     #[arg(short, long)]
     normalize: bool,
 }
 
-#[derive(Debug, Parser)]
-struct Test {}
-
 fn main() {
     let arguments = Arguments::parse();
+
+    set_log_level(&arguments);
 
     match arguments.command {
         Commands::Login(login) => {
@@ -74,111 +65,85 @@ fn main() {
             let mut client = spotify::Client::new(oauth, groove.market);
 
             let device = jukebox::choose_device(&mut client, groove.device.as_deref())
-                .expect("Failed to choose a device.");
+                .expect("Failed to choose a device");
 
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let mut reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+            let mut reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader");
 
             loop {
                 reader
                     .wait(None)
-                    .expect("Failed to wait for a card to be present.");
+                    .expect("Failed to wait for a card to be present");
 
                 match reader.read() {
                     Ok(None) => {
-                        if let Err(e) = jukebox::pause_playback(&mut client, device.id.clone()) {
-                            eprintln!("Failed to pause playback: {}", e);
+                        match jukebox::pause_playback(&mut client, device.id.clone()) {
+                            Ok(_) => tracing::debug!("Paused playback"),
+                            Err(e) => tracing::warn!(%e, "Failed to pause playback")
                         }
-                        eprintln!("Paused playback");
                     }
                     Ok(Some(uri)) if uri.is_empty() => {
-                        eprintln!("Read empty tag");
+                        tracing::debug!("Read empty tag");
                     }
                     Ok(Some(uri)) => {
-                        if let Err(error) =
-                            jukebox::start_playback(&mut client, device.id.clone(), uri.clone())
-                        {
-                            eprintln!("Failed to start playback: {}", error);
+                        match jukebox::start_playback(&mut client, device.id.clone(), uri.clone()) {
+                            Ok(_) => tracing::debug!(%uri, "Started playback"),
+                            Err(e) => tracing::warn!(%e, %uri, "Failed to start playback")
                         }
-
-                        eprintln!("Played song {}", uri);
                     }
                     Err(e) => {
-                        eprintln!("Failed to read the URI from the card: {}", e);
+                        tracing::warn!(%e, "Failed to read the URI from the card");
                     }
                 }
-            }
-        }
-        Commands::Write(write) => {
-            let ctx =
-                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
-
-            if !reader
-                .write(write.uri.to_string())
-                .expect("Failed to write the URI to the card.")
-            {
-                eprintln!("No card is present.");
-            }
-        }
-        Commands::Erase(_) => {
-            let ctx =
-                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
-
-            if !reader.erase().expect("Failed to erase the card.") {
-                eprintln!("No card is present.");
             }
         }
         Commands::Read(read) => {
             let ctx =
                 pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
+            let reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader");
 
             match reader.read() {
                 Ok(None) => {
-                    eprintln!("No card is present.");
+                    tracing::warn!("No card is present");
                 }
                 Ok(Some(value)) => {
                     if read.normalize {
-                        let uri: spotify::Uri =
-                            value.as_str().parse().expect("Failed to parse URI");
-                        println!("{:?}", uri.to_string());
+                        let result: Result<Uri, UriParseError> = value.as_str().parse();
+                        match result {
+                            Ok(uri) => println!("{:?}", uri.to_string()),
+                            Err(_) => {
+                                tracing::warn!("Failed to parse the URI");
+                                println!("{value:?}");
+                            }
+                        }
                     } else {
                         println!("{value:?}");
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to read the URI from the card: {}", e);
-                }
-            }
-        }
-        Commands::Test(_) => {
-            let ctx =
-                pcsc::Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-            let mut reader = jukebox::choose_reader(ctx).expect("Failed to choose a card reader.");
-
-            loop {
-                reader
-                    .wait(None)
-                    .expect("Failed to wait for a card to be present.");
-
-                match reader.read() {
-                    Ok(None) => {
-                        eprintln!("Paused playback");
-                    }
-                    Ok(Some(uri)) if uri.is_empty() => {
-                        eprintln!("Read empty tag");
-                    }
-                    Ok(Some(uri)) => {
-                        eprintln!("Played song {}", uri);
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to read the URI from the card: {}", e);
-                    }
+                    tracing::error!(%e, "Failed to read the URI from the card");
                 }
             }
         }
     }
+}
+
+fn set_log_level(arguments: &Arguments) {
+    let level = match arguments.verbosity {
+        0 => tracing::Level::ERROR,
+        1 => tracing::Level::WARN,
+        2 => tracing::Level::INFO,
+        3 => tracing::Level::DEBUG,
+        _ => tracing::Level::TRACE,
+    };
+
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(level)
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set global default subscriber");
 }
