@@ -50,9 +50,7 @@ impl FromStr for Uri {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.split_once(":") {
             Some(("spotify", parts)) => {
-                let (category, id) = parts
-                    .split_once(":")
-                    .ok_or(UriParseError)?;
+                let (category, id) = parts.split_once(":").ok_or(UriParseError)?;
 
                 Ok(Uri {
                     category: category.to_string(),

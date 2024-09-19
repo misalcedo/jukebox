@@ -3,9 +3,6 @@ name = "jukebox"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "jukebox"
-
 [dependencies]
 anyhow = { version = "1.0.89" }
 clap = { version = "4.5.17", features = ["derive", "env"] }
