@@ -99,7 +99,7 @@ impl Reader {
                             Ok(Some(String::from_utf8(data)?))
                         }
                     _ => {
-                        tracing::error!(record = format!("{:?}", record), "Unknown record");
+                        tracing::warn!(record = format!("{:?}", record), "Unknown record");
                         Ok(Some(String::new()))
                     }
                 }

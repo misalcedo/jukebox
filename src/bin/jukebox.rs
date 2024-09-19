@@ -80,7 +80,7 @@ fn main() {
                     Ok(None) => {
                         match jukebox::pause_playback(&mut client, device.id.clone()) {
                             Ok(_) => tracing::debug!("Paused playback"),
-                            Err(e) => tracing::warn!(%e, "Failed to pause playback")
+                            Err(e) => tracing::error!(%e, "Failed to pause playback")
                         }
                     }
                     Ok(Some(uri)) if uri.is_empty() => {
@@ -89,11 +89,11 @@ fn main() {
                     Ok(Some(uri)) => {
                         match jukebox::start_playback(&mut client, device.id.clone(), uri.clone()) {
                             Ok(_) => tracing::debug!(%uri, "Started playback"),
-                            Err(e) => tracing::warn!(%e, %uri, "Failed to start playback")
+                            Err(e) => tracing::error!(%e, %uri, "Failed to start playback")
                         }
                     }
                     Err(e) => {
-                        tracing::warn!(%e, "Failed to read the URI from the card");
+                        tracing::error!(%e, "Failed to read the URI from the card");
                     }
                 }
             }
