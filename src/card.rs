@@ -182,7 +182,7 @@ impl Reader {
             .connect(&self.reader, pcsc::ShareMode::Shared, pcsc::Protocols::ANY)
         {
             Ok(card) => Ok(Some(card)),
-            Err(pcsc::Error::NoSmartcard) => Ok(None),
+            Err(pcsc::Error::NoSmartcard | pcsc::Error::RemovedCard) => Ok(None),
             Err(e) => Err(anyhow!(e)),
         }
     }
