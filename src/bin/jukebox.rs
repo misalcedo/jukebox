@@ -79,16 +79,16 @@ fn main() {
                 match reader.read() {
                     Ok(None) => {
                         match jukebox::pause_playback(&mut client, device.id.clone()) {
-                            Ok(_) => tracing::debug!("Paused playback"),
+                            Ok(_) => tracing::info!("Paused playback"),
                             Err(e) => tracing::error!(%e, "Failed to pause playback")
                         }
                     }
                     Ok(Some(uri)) if uri.is_empty() => {
-                        tracing::debug!("Read empty tag");
+                        tracing::info!("Read empty tag");
                     }
                     Ok(Some(uri)) => {
                         match jukebox::start_playback(&mut client, device.id.clone(), uri.clone()) {
-                            Ok(_) => tracing::debug!(%uri, "Started playback"),
+                            Ok(_) => tracing::info!(%uri, "Started playback"),
                             Err(e) => tracing::error!(%e, %uri, "Failed to start playback")
                         }
                     }
