@@ -113,7 +113,6 @@ pub fn choose_device(client: &mut spotify::Client, name: &str) -> anyhow::Result
             None => {
                 tracing::warn!("Found no matching device");
                 thread::sleep(SLEEP_INTERVAL);
-                continue;
             }
             Some(device) => return Ok(device)
         }
