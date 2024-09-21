@@ -7,6 +7,8 @@ pub mod token;
 
 use clap::Parser;
 use std::path::PathBuf;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about)]
@@ -97,14 +99,20 @@ pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
 }
 
 pub fn choose_device(client: &mut spotify::Client, name: &str) -> anyhow::Result<Device> {
-    let device = client
-        .get_available_devices()?
-        .devices
-        .into_iter()
-        .find(|device| device.name == name)
-        .ok_or_else(|| anyhow!("Found no matching device"))?;
-
-    Ok(device)
+    loop {
+        match client
+            .get_available_devices()?
+            .devices
+            .into_iter()
+            .find(|device| device.name == name) {
+            None => {
+                tracing::warn!("Found no matching device");
+                thread::sleep(Duration::from_secs(10));
+                continue;
+            }
+            Some(device) => return Ok(device)
+        }
+    }
 }
 
 pub fn start_playback(
