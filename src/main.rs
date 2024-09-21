@@ -10,6 +10,8 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
 
+static SLEEP_INTERVAL: Duration = Duration::from_secs(10);
+
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about)]
 struct Arguments {
@@ -87,15 +89,18 @@ fn set_log_level(arguments: &Arguments) {
 }
 
 pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {
-    for reader in ctx.list_readers_owned()? {
-        if let Ok(name) = reader.to_str() {
-            if name.contains("PICC") {
-                return Ok(card::Reader::new(ctx, reader));
+    loop {
+        for reader in ctx.list_readers_owned()? {
+            if let Ok(name) = reader.to_str() {
+                if name.contains("PICC") {
+                    return Ok(card::Reader::new(ctx, reader));
+                }
             }
         }
-    }
 
-    Err(anyhow!("No readers are connected"))
+        tracing::warn!("No PICC readers are connected");
+        thread::sleep(SLEEP_INTERVAL);
+    }
 }
 
 pub fn choose_device(client: &mut spotify::Client, name: &str) -> anyhow::Result<Device> {
@@ -107,7 +112,7 @@ pub fn choose_device(client: &mut spotify::Client, name: &str) -> anyhow::Result
             .find(|device| device.name == name) {
             None => {
                 tracing::warn!("Found no matching device");
-                thread::sleep(Duration::from_secs(10));
+                thread::sleep(SLEEP_INTERVAL);
                 continue;
             }
             Some(device) => return Ok(device)
