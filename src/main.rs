@@ -1,4 +1,4 @@
-use crate::spotify::models::{Device, StartPlaybackRequest};
+use crate::spotify::models::{Device, Offset, StartPlaybackRequest};
 use anyhow::anyhow;
 
 pub mod card;
@@ -132,10 +132,14 @@ pub fn start_playback(
             request.uris = Some(vec![uri.to_string()]);
         }
         "playlist" => {
+            let playlist = client.get_playlist(&uri.id)?;
             request.context_uri = Some(uri.to_string());
+            request.offset = Some(Offset::random(playlist.tracks.total))
         }
         "album" => {
+            let album = client.get_album(&uri.id)?;
             request.context_uri = Some(uri.to_string());
+            request.offset = Some(Offset::random(album.total_tracks))
         }
         _ => {
             return Err(anyhow!("Unsupported URI category"));

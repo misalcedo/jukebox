@@ -1,16 +1,17 @@
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Image {
     pub url: String,
-    pub height: i64,
-    pub width: i64,
+    pub height: u64,
+    pub width: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Followers {
     pub href: Option<String>,
-    pub total: i64,
+    pub total: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -50,7 +51,7 @@ pub struct Device {
     pub name: String,
     #[serde(rename = "type")]
     pub r#type: String,
-    pub volume_percent: i64,
+    pub volume_percent: u64,
     pub supports_volume: bool,
 }
 
@@ -66,7 +67,18 @@ pub struct DeviceIdList {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Offset {
-    pub position: i64,
+    pub position: u64,
+}
+
+impl Offset {
+    pub fn random(value: u64) -> Self {
+        let mut rng = rand::thread_rng();
+        let position = rng.gen_range(0..value);
+
+        Self {
+            position
+        }
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -74,7 +86,7 @@ pub struct StartPlaybackRequest {
     pub context_uri: Option<String>,
     pub uris: Option<Vec<String>>,
     pub offset: Option<Offset>,
-    pub position_ms: i64,
+    pub position_ms: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -106,7 +118,7 @@ pub struct Restrictions {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Album {
     pub album_type: String,
-    pub total_tracks: usize,
+    pub total_tracks: u64,
     pub external_urls: ExternalUrls,
     pub href: String,
     pub id: String,
@@ -126,16 +138,16 @@ pub struct Item {
     pub album: Album,
     pub artists: Vec<Artist>,
     pub available_markets: Vec<String>,
-    pub disc_number: i64,
-    pub duration_ms: i64,
+    pub disc_number: u64,
+    pub duration_ms: u64,
     pub explicit: bool,
     pub external_urls: ExternalUrls,
     pub href: String,
     pub id: String,
     pub restrictions: Option<Restrictions>,
     pub name: String,
-    pub popularity: i64,
-    pub track_number: i64,
+    pub popularity: u64,
+    pub track_number: u64,
     #[serde(rename = "type")]
     pub r#type: String,
     pub uri: String,
@@ -172,7 +184,7 @@ pub struct Owner {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Tracks {
-    pub total: usize,
+    pub total: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
