@@ -106,7 +106,7 @@ pub struct Restrictions {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Album {
     pub album_type: String,
-    pub total_tracks: i64,
+    pub total_tracks: usize,
     pub external_urls: ExternalUrls,
     pub href: String,
     pub id: String,
@@ -171,8 +171,14 @@ pub struct Owner {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Tracks {
+    pub total: usize,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Playlist {
     pub name: String,
     pub owner: Owner,
     pub uri: String,
+    pub tracks: Tracks
 }
