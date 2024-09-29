@@ -19,7 +19,7 @@ static SLEEP_INTERVAL: Duration = Duration::from_secs(10);
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about)]
 struct Arguments {
-    #[arg(short = 'v', long = None, action = clap::ArgAction::Count)]
+    #[arg(short = 'v', long = None, env = "JUKEBOX_VERBOSITY", action = clap::ArgAction::Count)]
     verbosity: u8,
 
     #[arg(short, long, env = "JUKEBOX_CLIENT_ID")]
