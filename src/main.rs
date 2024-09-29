@@ -146,9 +146,16 @@ pub fn start_playback(
         }
     }
 
-    client.play(device_id, &request)?;
+    // First try to play on the current playback device.
+    // If that fails, use the configured device.
+    if let Err(e) = client.play(None, &request) {
+        if e.status() != Some(reqwest::StatusCode::NOT_FOUND) {
+            tracing::info!("No existing playback device found, using the configured device");
+            client.play(Some(device_id), &request)?;
+        }
+    }
 
-    // Sometimes shuffle is unable to find a playback session.
+    // Sometimes shuffle is unable to find a playback session, so try one more time.
     if let Err(e) = client.shuffle(true) {
         if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
             client.shuffle(true)?;

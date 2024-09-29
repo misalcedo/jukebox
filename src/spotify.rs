@@ -99,7 +99,7 @@ impl Client {
             .json()
     }
 
-    pub fn play(&mut self, device_id: String, request: &StartPlaybackRequest) -> Result<()> {
+    pub fn play(&mut self, device_id: Option<String>, request: &StartPlaybackRequest) -> Result<()> {
         self.http
             .put("https://api.spotify.com/v1/me/player/play")
             .query(&[("device_id", device_id)])
