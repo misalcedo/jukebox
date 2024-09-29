@@ -1,6 +1,6 @@
 #! /bin/bash
 
-cargo build --release
+cargo build --release --features ui
 
 BUNDLE="target/bundle/Jukebox.app"
 mkdir -p "$BUNDLE/Contents/MacOS"
@@ -17,7 +17,7 @@ export JUKEBOX_TOKEN_CACHE="$JUKEBOX_TOKEN_CACHE"
 export JUKEBOX_CLIENT_ID="$JUKEBOX_CLIENT_ID"
 export JUKEBOX_MARKET="$JUKEBOX_MARKET"
 
-"\$bin/jukebox"
+"\$bin/jukebox" --ui
 EOF
 
 chmod +x "$BUNDLE/Contents/MacOS/run"

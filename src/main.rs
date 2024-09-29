@@ -5,6 +5,9 @@ pub mod card;
 pub mod spotify;
 pub mod token;
 
+#[cfg(feature = "ui")]
+mod window;
+
 use clap::Parser;
 use std::path::PathBuf;
 use std::thread;
@@ -29,12 +32,21 @@ struct Arguments {
 
     #[arg(short, long, env = "JUKEBOX_DEVICE")]
     device: String,
+
+    #[cfg(feature = "ui")]
+    #[arg(short, long)]
+    ui: bool,
 }
 
 fn main() {
     let arguments = Arguments::parse();
 
     set_log_level(&arguments);
+
+    #[cfg(feature = "ui")]
+    if arguments.ui {
+        window::run().expect("Failed to run the UI");
+    }
 
     let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
     let mut client = spotify::Client::new(oauth, arguments.market);
