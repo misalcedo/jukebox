@@ -2,11 +2,11 @@
 
 cargo build --release
 
-BUNDLE="target/bundle/Jukebox Tagger.app"
+BUNDLE="target/bundle/Jukebox.app"
 mkdir -p "$BUNDLE/Contents/MacOS"
 mkdir -p "$BUNDLE/Contents/Resources"
 
-cp target/release/tagger "$BUNDLE/Contents/MacOS"
+cp target/release/jukebox "$BUNDLE/Contents/MacOS"
 cp assets/jukebox.icns "$BUNDLE/Contents/Resources"
 
 cat > "$BUNDLE/Contents/MacOS/run" <<EOF
@@ -28,10 +28,10 @@ cat > "$BUNDLE/Contents/Info.plist" <<EOF
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>cc.salcedo.jukebox-tagger</string>
+    <string>cc.salcedo.jukebox</string>
 
     <key>CFBundleName</key>
-    <string>Jukebox Tagger</string>
+    <string>Jukebox</string>
 
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
