@@ -33,10 +33,6 @@ struct Arguments {
 
     #[arg(short, long, env = "JUKEBOX_DEVICE")]
     device: String,
-
-    #[cfg(feature = "ui")]
-    #[arg(short, long)]
-    ui: bool,
 }
 
 fn main() {
@@ -45,9 +41,7 @@ fn main() {
     set_log_level(&arguments).expect("Failed to configure logging");
 
     #[cfg(feature = "ui")]
-    if arguments.ui {
-        window::run().expect("Failed to run the UI");
-    }
+    window::run().expect("Failed to run the UI");
 
     let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
     let mut client = spotify::Client::new(oauth, arguments.market);
@@ -83,14 +77,6 @@ fn main() {
 
 fn set_log_level(arguments: &Arguments) -> anyhow::Result<()> {
     LogTracer::init()?;
-    
-    #[cfg(feature = "ui")]
-    if arguments.ui {
-        let subscriber = tracing::subscriber::NoSubscriber::new();
-        tracing::subscriber::set_global_default(subscriber)?;
-
-        return Ok(());
-    }
 
     let level = match arguments.verbosity {
         0 => tracing::Level::ERROR,
