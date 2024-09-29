@@ -12,6 +12,7 @@ use clap::Parser;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
+use tracing_log::LogTracer;
 
 static SLEEP_INTERVAL: Duration = Duration::from_secs(10);
 
@@ -41,7 +42,7 @@ struct Arguments {
 fn main() {
     let arguments = Arguments::parse();
 
-    set_log_level(&arguments);
+    set_log_level(&arguments).expect("Failed to configure logging");
 
     #[cfg(feature = "ui")]
     if arguments.ui {
@@ -80,7 +81,17 @@ fn main() {
     }
 }
 
-fn set_log_level(arguments: &Arguments) {
+fn set_log_level(arguments: &Arguments) -> anyhow::Result<()> {
+    LogTracer::init()?;
+    
+    #[cfg(feature = "ui")]
+    if arguments.ui {
+        let subscriber = tracing::subscriber::NoSubscriber::new();
+        tracing::subscriber::set_global_default(subscriber)?;
+
+        return Ok(());
+    }
+
     let level = match arguments.verbosity {
         0 => tracing::Level::ERROR,
         1 => tracing::Level::WARN,
@@ -96,8 +107,9 @@ fn set_log_level(arguments: &Arguments) {
         .with_thread_ids(true)
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set global default subscriber");
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    Ok(())
 }
 
 pub fn choose_reader(ctx: pcsc::Context) -> anyhow::Result<card::Reader> {

@@ -1,9 +1,13 @@
 slint::slint! {
 export component MainWindow inherits Window {
-    Text {
-        text: "Jukebox";
-        color: green;
-    }
+        preferred-width: 640px;
+        preferred-height: 400px;
+        icon: @image-url("assets/jukebox.png");
+        title: @tr("Jukebox");
+        Text {
+            text: "Jukebox";
+            color: green;
+        }
 }
 }
 
