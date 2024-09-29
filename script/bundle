@@ -17,20 +17,25 @@ cat > "$BUNDLE/Contents/Info.plist" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key>
-    <string>cc.salcedo.jukebox</string>
-
-    <key>Label</key>
-    <string>cc.salcedo.jukebox</string>
-
     <key>CFBundleName</key>
     <string>Jukebox</string>
 
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <key>CFBundleDisplayName</key>
+    <string>Jukebox</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>cc.salcedo.jukebox</string>
 
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$(cargo metadata --no-deps --quiet | jq -r '.packages | last | .version')</string>
+
+    <key>CFBundleIconFiles</key>
+    <array>
+        <string>jukebox.icns</string>
+    </array>
+
+    <key>UIRequiresPersistentWiFi</key>
+    <true/>
 
     <key>CFBundleExecutable</key>
     <string>jukebox</string>
@@ -40,15 +45,14 @@ cat > "$BUNDLE/Contents/Info.plist" <<EOF
         <key>JUKEBOX_VERBOSITY</key>
         <string>2</string>
         <key>JUKEBOX_TOKEN_CACHE</key>
-        <string>$JUKEBOX_TOKEN_CACHE</string>
+        <string>$HOME/.spotify</string>
         <key>JUKEBOX_CLIENT_ID</key>
         <string>$JUKEBOX_CLIENT_ID</string>
         <key>JUKEBOX_MARKET</key>
-        <string>$JUKEBOX_MARKET</string>
+        <string>US</string>
+        <key>JUKEBOX_DEVICE</key>
+        <string>$(scutil --get ComputerName)</string>
     </dict>
-
-    <key>CFBundleIconFile</key>
-    <string>jukebox</string>
 
     <key>CFBundlePrimaryIconFile</key>
     <string>jukebox</string>

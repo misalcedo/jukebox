@@ -26,3 +26,8 @@ https://cardwerk.com/smart-card-standard-iso7816-4-section-6-basic-interindustry
 
 The jukebox icon is made by [Freepik](https://www.flaticon.com/authors/freepik)
 from [www.flaticon.com](https://www.flaticon.com/)
+
+## PList
+
+- https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFBundles/BundleTypes/BundleTypes.html
+- https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFBundles/BundleTypes/BundleTypes.html#//apple_ref/doc/uid/10000123i-CH101-SW13
