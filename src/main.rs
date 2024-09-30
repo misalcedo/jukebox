@@ -173,13 +173,6 @@ pub fn start_playback(
         }
     }
 
-    // Sometimes shuffle is unable to find a playback session, so try one more time.
-    if let Err(e) = client.shuffle(true) {
-        if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
-            client.shuffle(true)?;
-        }
-    };
-
     Ok(())
 }
 
