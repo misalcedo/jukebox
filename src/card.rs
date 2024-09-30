@@ -142,22 +142,6 @@ mod tests {
     use pcsc::ctl_code;
 
     #[test]
-    fn get_led_and_buzzer() -> anyhow::Result<()> {
-        let ctx = Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-        let reader = CString::new("ACS ACR1252 Dual Reader PICC")?;
-        let card = ctx.connect(&reader, pcsc::ShareMode::Direct, pcsc::Protocols::ANY)?;
-
-        let mut buffer = vec![0; 1024];
-        let response = card.control(ctl_code(0x310000 + 3500 * 4), b"\xE0\x00\x00\x18\x00", &mut buffer)?;
-        // let response = card.control(0x310000 + 3500 * 4, b"\xE0\x00\x00\x18\x00", &mut buffer)?;
-        // let response = card.control(ctl_code(3500), b"\xE0\x00\x00\x21\x00", &mut buffer)?;
-
-        assert_eq!(format!("{:X?}", response), String::new());
-
-        Ok(())
-    }
-
-    #[test]
     fn set_led_and_buzzer() {
         let ctx = Context::establish(pcsc::Scope::User).unwrap();
         let reader = CString::new("ACS ACR1252 1S CL Reader PICC 0").unwrap();
