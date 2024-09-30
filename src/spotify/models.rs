@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Image {
     pub url: String,
-    pub height: u64,
-    pub width: u64,
+    pub height: Option<u64>,
+    pub width: Option<u64>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -184,6 +184,7 @@ pub struct Owner {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Tracks {
+    pub limit: u64,
     pub total: u64,
 }
 
@@ -192,5 +193,6 @@ pub struct Playlist {
     pub name: String,
     pub owner: Owner,
     pub uri: String,
-    pub tracks: Tracks
+    pub images: Vec<Image>,
+    pub tracks: Tracks,
 }
