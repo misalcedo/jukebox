@@ -73,6 +73,9 @@ cat > "$BUNDLE/Contents/Info.plist" <<EOF
 
     <key>NSHighResolutionCapable</key>
     <true/>
+
+    <key>NSUIElement</key>
+    <false/>
 </dict>
 </plist>
 EOF

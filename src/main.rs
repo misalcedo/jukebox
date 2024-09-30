@@ -40,9 +40,6 @@ fn main() {
 
     set_log_level(&arguments).expect("Failed to configure logging");
 
-    #[cfg(feature = "ui")]
-    window::run().expect("Failed to run the UI");
-
     let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
     let mut client = spotify::Client::new(oauth, arguments.market);
 
