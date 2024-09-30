@@ -186,6 +186,13 @@ pub struct Owner {
 pub struct Tracks {
     pub limit: u64,
     pub total: u64,
+    pub items: Vec<TrackItem>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct TrackItem {
+    pub is_local: bool,
+    pub track: Track,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
