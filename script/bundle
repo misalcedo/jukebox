@@ -29,13 +29,19 @@ cat > "$BUNDLE/Contents/Info.plist" <<EOF
     <key>CFBundleVersion</key>
     <string>$(cargo metadata --no-deps --quiet | jq -r '.packages | last | .version')</string>
 
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundlePrimaryIconFile</key>
+    <string>jukebox</string>
+
     <key>CFBundleIconFiles</key>
     <array>
         <string>jukebox.icns</string>
     </array>
 
-    <key>UIRequiresPersistentWiFi</key>
-    <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright (c) Miguel Salcedo 2024. All rights reserved.</string>
 
     <key>CFBundleExecutable</key>
     <string>jukebox</string>
@@ -54,11 +60,11 @@ cat > "$BUNDLE/Contents/Info.plist" <<EOF
         <string>$(scutil --get ComputerName)</string>
     </dict>
 
-    <key>CFBundlePrimaryIconFile</key>
-    <string>jukebox</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.music</string>
 
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright (c) Miguel Salcedo 2024. All rights reserved.</string>
+    <key>LSFileQuarantineEnabled</key>
+    <false/>
 </dict>
 </plist>
 EOF
