@@ -134,6 +134,14 @@ pub fn start_playback(
 ) -> anyhow::Result<()> {
     let uri: spotify::Uri = uri.as_str().parse()?;
     let mut uris = Vec::new();
+    let mut device = device_id;
+
+    if let Some(state) = client.get_playback_state()? {
+        device = state.device.id;
+        if !state.is_playing && state.progress_ms < state.item.duration_ms {
+            tracing::debug!("{state:?}");
+        }
+    }
 
     match uri.category.as_str() {
         "track" => {
@@ -164,16 +172,7 @@ pub fn start_playback(
 
     let request = StartPlaybackRequest::from(uris);
 
-    // First try to play on the current playback device.
-    // If that fails, use the configured device.
-    if let Err(e) = client.play(None, &request) {
-        if e.status() != Some(reqwest::StatusCode::NOT_FOUND) {
-            tracing::info!("No existing playback device found, using the configured device");
-            client.play(Some(device_id), &request)?;
-        }
-    }
-
-    Ok(())
+    Ok(client.play(Some(device), &request)?)
 }
 
 pub fn pause_playback(client: &mut spotify::Client, device_id: String) -> anyhow::Result<()> {

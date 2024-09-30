@@ -1,31 +1,31 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Image {
     pub url: String,
     pub height: Option<u64>,
     pub width: Option<u64>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Followers {
     pub href: Option<String>,
     pub total: u64,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ExternalUrls {
     pub spotify: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ExplicitContent {
     pub filter_enabled: bool,
     pub filter_locked: bool,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct User {
     pub country: String,
     pub display_name: String,
@@ -42,7 +42,7 @@ pub struct User {
     pub uri: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Device {
     pub id: String,
     pub is_active: bool,
@@ -55,17 +55,17 @@ pub struct Device {
     pub supports_volume: bool,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DeviceList {
     pub devices: Vec<Device>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DeviceIdList {
     pub device_ids: Vec<String>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Offset {
     pub position: u64,
 }
@@ -81,7 +81,7 @@ impl Offset {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StartPlaybackRequest {
     pub context_uri: Option<String>,
     pub uris: Option<Vec<String>>,
@@ -100,17 +100,17 @@ impl From<Vec<String>> for StartPlaybackRequest {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Disallows {
     pub resuming: Option<bool>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Actions {
     pub disallows: Disallows,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Artist {
     pub external_urls: ExternalUrls,
     pub href: String,
@@ -121,12 +121,12 @@ pub struct Artist {
     pub uri: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Restrictions {
     pub reason: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Album {
     pub album_type: String,
     pub total_tracks: u64,
@@ -145,14 +145,14 @@ pub struct Album {
     pub tracks: Option<AlbumTracks>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct AlbumTracks {
     pub limit: u64,
     pub total: u64,
     pub items: Vec<AlbumTrackItem>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct AlbumTrackItem {
     pub is_local: bool,
     pub artists: Vec<Artist>,
@@ -160,11 +160,10 @@ pub struct AlbumTrackItem {
     pub uri: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Item {
     pub album: Album,
     pub artists: Vec<Artist>,
-    pub available_markets: Vec<String>,
     pub disc_number: u64,
     pub duration_ms: u64,
     pub explicit: bool,
@@ -181,7 +180,7 @@ pub struct Item {
     pub is_local: bool,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Context {
     #[serde(rename = "type")]
     pub r#type: String,
@@ -190,7 +189,7 @@ pub struct Context {
     pub uri: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Track {
     pub album: Album,
     pub artists: Vec<Artist>,
@@ -198,7 +197,7 @@ pub struct Track {
     pub uri: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Owner {
     pub external_urls: ExternalUrls,
     pub href: String,
@@ -209,24 +208,39 @@ pub struct Owner {
     pub display_name: String,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct PlaylistTracks {
     pub limit: u64,
     pub total: u64,
     pub items: Vec<PlaylistTrackItem>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct PlaylistTrackItem {
     pub is_local: bool,
     pub track: Track,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Playlist {
     pub name: String,
     pub owner: Owner,
     pub uri: String,
     pub images: Vec<Image>,
     pub tracks: PlaylistTracks,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PlaybackState {
+    pub device: Device,
+    pub repeat_state: String,
+    pub shuffle_state: bool,
+    pub smart_shuffle: bool,
+    pub context: Context,
+    pub timestamp: u64,
+    pub progress_ms: u64,
+    pub is_playing: bool,
+    pub item: Item,
+    pub currently_playing_type: String,
+    pub actions: Actions,
 }

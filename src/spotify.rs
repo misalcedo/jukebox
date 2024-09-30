@@ -1,4 +1,4 @@
-use crate::spotify::models::{Album, DeviceList, Playlist, StartPlaybackRequest, Track};
+use crate::spotify::models::{Album, DeviceList, PlaybackState, Playlist, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
 use std::error::Error;
@@ -132,6 +132,21 @@ impl Client {
             .error_for_status()?;
 
         Ok(())
+    }
+
+    pub fn get_playback_state(&mut self) -> Result<Option<PlaybackState>> {
+        let response = self.http
+            .get("https://api.spotify.com/v1/me/player")
+            .query(&[("market", self.market.as_str())])
+            .header("Authorization", self.oauth.authorization())
+            .send()?
+            .error_for_status()?;
+
+        if response.content_length() == Some(0) {
+            return Ok(None);
+        }
+
+        response.json()
     }
 
     pub fn get_track(&mut self, id: &str) -> Result<Track> {
