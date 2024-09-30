@@ -165,7 +165,7 @@ mod tests {
 
         let mut buffer = vec![0; 1024];
         // Disable buzzer in all cases.
-        let command = [0xE0, 0x00, 0x00, 0x21, 0x01, 0b11000111];
+        let command = [0xE0, 0x00, 0x00, 0x21, 0x01, 0b01000101];
         let response = card.control(ctl_code(0x310000 + 3500 * 4), &command, &mut buffer)?;
         // let response = card.control(0x310000 + 3500 * 4, b"\xE0\x00\x00\x18\x00", &mut buffer)?;
         // let response = card.control(ctl_code(3500), b"\xE0\x00\x00\x21\x00", &mut buffer)?;
