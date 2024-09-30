@@ -158,20 +158,17 @@ mod tests {
     }
 
     #[test]
-    fn set_led_and_buzzer() -> anyhow::Result<()> {
-        let ctx = Context::establish(pcsc::Scope::User).expect("Failed to establish context");
-        let reader = CString::new("ACS ACR1252 Dual Reader PICC")?;
-        let card = ctx.connect(&reader, pcsc::ShareMode::Direct, pcsc::Protocols::ANY)?;
+    fn set_led_and_buzzer() {
+        let ctx = Context::establish(pcsc::Scope::User).unwrap();
+        let reader = CString::new("ACS ACR1252 1S CL Reader PICC 0").unwrap();
+        let card = ctx.connect(&reader, pcsc::ShareMode::Direct, pcsc::Protocols::UNDEFINED).unwrap();
+
+        // Disable buzzer in all cases, but keep the other settings as the default.
+        let command = [0xE0, 0x00, 0x00, 0x21, 0x01, 0b01000101];
 
         let mut buffer = vec![0; 1024];
-        // Disable buzzer in all cases.
-        let command = [0xE0, 0x00, 0x00, 0x21, 0x01, 0b01000101];
-        let response = card.control(ctl_code(0x310000 + 3500 * 4), &command, &mut buffer)?;
-        // let response = card.control(0x310000 + 3500 * 4, b"\xE0\x00\x00\x18\x00", &mut buffer)?;
-        // let response = card.control(ctl_code(3500), b"\xE0\x00\x00\x21\x00", &mut buffer)?;
+        let response = card.control(ctl_code(3500), &command, &mut buffer).unwrap();
 
-        assert_eq!(format!("{:X?}", response), String::new());
-
-        Ok(())
+        assert_eq!(format!("{:X?}", response), String::from("[E1, 0, 0, 0, 1, 45]"));
     }
 }
