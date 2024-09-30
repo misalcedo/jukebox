@@ -1,4 +1,4 @@
-use crate::spotify::models::{Device, Offset, StartPlaybackRequest};
+use crate::spotify::models::{Device, StartPlaybackRequest};
 use anyhow::anyhow;
 
 pub mod card;
@@ -9,6 +9,7 @@ pub mod token;
 mod window;
 
 use clap::Parser;
+use rand::prelude::SliceRandom;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
@@ -131,27 +132,37 @@ pub fn start_playback(
     device_id: String,
     uri: String,
 ) -> anyhow::Result<()> {
-    let mut request = StartPlaybackRequest::default();
     let uri: spotify::Uri = uri.as_str().parse()?;
+    let mut uris = Vec::new();
 
     match uri.category.as_str() {
         "track" => {
-            request.uris = Some(vec![uri.to_string()]);
+            uris.push(uri.to_string());
         }
         "playlist" => {
             let playlist = client.get_playlist(&uri.id)?;
-            request.context_uri = Some(uri.to_string());
-            request.offset = Some(Offset::random(playlist.tracks.total))
+            uris.reserve(playlist.tracks.items.len());
+            for item in playlist.tracks.items {
+                uris.push(item.track.uri);
+            }
         }
         "album" => {
             let album = client.get_album(&uri.id)?;
-            request.context_uri = Some(uri.to_string());
-            request.offset = Some(Offset::random(album.total_tracks))
+            if let Some(tracks) = album.tracks {
+                uris.reserve(tracks.items.len());
+                for item in tracks.items {
+                    uris.push(item.uri);
+                }
+            }
         }
         _ => {
             return Err(anyhow!("Unsupported URI category"));
         }
     }
+
+    uris.shuffle(&mut rand::thread_rng());
+
+    let request = StartPlaybackRequest::from(uris);
 
     // First try to play on the current playback device.
     // If that fails, use the configured device.

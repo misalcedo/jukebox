@@ -89,6 +89,17 @@ pub struct StartPlaybackRequest {
     pub position_ms: u64,
 }
 
+impl From<Vec<String>> for StartPlaybackRequest {
+    fn from(value: Vec<String>) -> Self {
+        Self {
+            context_uri: None,
+            uris: Some(value),
+            offset: None,
+            position_ms: 0,
+        }
+    }
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Disallows {
     pub resuming: Option<bool>,
@@ -131,6 +142,22 @@ pub struct Album {
     pub r#type: String,
     pub uri: String,
     pub artists: Vec<Artist>,
+    pub tracks: Option<AlbumTracks>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct AlbumTracks {
+    pub limit: u64,
+    pub total: u64,
+    pub items: Vec<AlbumTrackItem>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct AlbumTrackItem {
+    pub is_local: bool,
+    pub artists: Vec<Artist>,
+    pub name: String,
+    pub uri: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -183,14 +210,14 @@ pub struct Owner {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Tracks {
+pub struct PlaylistTracks {
     pub limit: u64,
     pub total: u64,
-    pub items: Vec<TrackItem>,
+    pub items: Vec<PlaylistTrackItem>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct TrackItem {
+pub struct PlaylistTrackItem {
     pub is_local: bool,
     pub track: Track,
 }
@@ -201,5 +228,5 @@ pub struct Playlist {
     pub owner: Owner,
     pub uri: String,
     pub images: Vec<Image>,
-    pub tracks: Tracks,
+    pub tracks: PlaylistTracks,
 }
