@@ -8,7 +8,7 @@ ui = ["dep:slint"]
 
 [dependencies]
 anyhow = { version = "1.0.89" }
-clap = { version = "4.5.17", features = ["derive", "env"] }
+clap = { version = "4.5.19", features = ["derive", "env"] }
 oauth2 = { version = "4.4.2", features = ["reqwest"] }
 pcsc = { version = "2.8.2" }
 rand = { version = "0.8.5" }
