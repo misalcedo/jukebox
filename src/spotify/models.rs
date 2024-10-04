@@ -231,16 +231,7 @@ pub struct Playlist {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
-pub struct PlaybackState {
-    pub device: Device,
-    pub repeat_state: String,
-    pub shuffle_state: bool,
-    pub smart_shuffle: bool,
-    pub context: Context,
-    pub timestamp: u64,
-    pub progress_ms: u64,
-    pub is_playing: bool,
-    pub item: Item,
-    pub currently_playing_type: String,
-    pub actions: Actions,
+pub struct Queue {
+    pub currently_playing: Option<Item>,
+    pub queue: Vec<Item>,
 }

@@ -1,5 +1,6 @@
 use crate::spotify::models::{Device, StartPlaybackRequest};
 use anyhow::anyhow;
+use std::collections::HashSet;
 
 pub mod card;
 pub mod spotify;
@@ -55,7 +56,7 @@ fn main() {
             .expect("Failed to wait for a card to be present");
 
         match reader.read() {
-            Ok(None) => match pause_playback(&mut client, device.id.clone()) {
+            Ok(None) => match pause_playback(&mut client) {
                 Ok(_) => tracing::info!("Paused playback"),
                 Err(e) => tracing::error!(%e, "Failed to pause playback"),
             },
@@ -134,14 +135,12 @@ pub fn start_playback(
 ) -> anyhow::Result<()> {
     let uri: spotify::Uri = uri.as_str().parse()?;
     let mut uris = Vec::new();
-    let mut device = device_id;
 
-    if let Some(state) = client.get_playback_state()? {
-        device = state.device.id;
-        if !state.is_playing && state.progress_ms < state.item.duration_ms {
-            tracing::debug!("{state:?}");
-        }
-    }
+    let queue = client.get_queue()?;
+    let tracks: HashSet<String> = queue.currently_playing.into_iter()
+        .chain(queue.queue.into_iter())
+        .map(|i| i.uri)
+        .collect();
 
     match uri.category.as_str() {
         "track" => {
@@ -168,16 +167,18 @@ pub fn start_playback(
         }
     }
 
-    uris.shuffle(&mut rand::thread_rng());
-
-    let request = StartPlaybackRequest::from(uris);
-
-    Ok(client.play(Some(device), &request)?)
+    if !tracks.is_empty() && tracks.iter().all(|t| uris.contains(t)) {
+        Ok(client.skip_to_next(None)?)
+    } else {
+        uris.shuffle(&mut rand::thread_rng());
+        let request = StartPlaybackRequest::from(uris);
+        Ok(client.play(Some(device_id), &request)?)
+    }
 }
 
-pub fn pause_playback(client: &mut spotify::Client, device_id: String) -> anyhow::Result<()> {
+pub fn pause_playback(client: &mut spotify::Client) -> anyhow::Result<()> {
     // Song may not be playing.
-    if let Err(e) = client.pause(device_id) {
+    if let Err(e) = client.pause(None) {
         if e.status() == Some(reqwest::StatusCode::FORBIDDEN) {
             return Ok(());
         }

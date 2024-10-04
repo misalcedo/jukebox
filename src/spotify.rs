@@ -1,4 +1,4 @@
-use crate::spotify::models::{Album, DeviceList, PlaybackState, Playlist, StartPlaybackRequest, Track};
+use crate::spotify::models::{Album, DeviceList, Playlist, Queue, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
 use std::error::Error;
@@ -111,18 +111,7 @@ impl Client {
         Ok(())
     }
 
-    pub fn shuffle(&mut self, state: bool) -> Result<()> {
-        self.http
-            .put("https://api.spotify.com/v1/me/player/shuffle")
-            .query(&[("state", state)])
-            .header("Authorization", self.oauth.authorization())
-            .send()?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
-    pub fn pause(&mut self, device_id: String) -> Result<()> {
+    pub fn pause(&mut self, device_id: Option<String>) -> Result<()> {
         self.http
             .put("https://api.spotify.com/v1/me/player/pause")
             .query(&[("device_id", device_id)])
@@ -134,19 +123,26 @@ impl Client {
         Ok(())
     }
 
-    pub fn get_playback_state(&mut self) -> Result<Option<PlaybackState>> {
-        let response = self.http
-            .get("https://api.spotify.com/v1/me/player")
-            .query(&[("market", self.market.as_str())])
+    pub fn skip_to_next(&mut self, device_id: Option<String>) -> Result<()> {
+        self.http
+            .post("https://api.spotify.com/v1/me/player/next")
+            .query(&[("device_id", device_id)])
             .header("Authorization", self.oauth.authorization())
+            .body("")
             .send()?
             .error_for_status()?;
 
-        if response.content_length() == Some(0) {
-            return Ok(None);
-        }
+        Ok(())
+    }
 
-        response.json()
+    pub fn get_queue(&mut self) -> Result<Queue> {
+        self.http
+            .get("https://api.spotify.com/v1/me/player/queue")
+            .header("Authorization", self.oauth.authorization())
+            .body("")
+            .send()?
+            .error_for_status()?
+            .json()
     }
 
     pub fn get_track(&mut self, id: &str) -> Result<Track> {
