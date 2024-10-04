@@ -16,7 +16,7 @@ use std::thread;
 use std::time::Duration;
 use tracing_log::LogTracer;
 
-static SLEEP_INTERVAL: Duration = Duration::from_secs(10);
+static SLEEP_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about)]
@@ -51,9 +51,11 @@ fn main() {
     let mut reader = choose_reader(ctx).expect("Failed to choose a card reader");
 
     loop {
-        reader
-            .wait(None)
-            .expect("Failed to wait for a card to be present");
+        if let Err(e) = reader.wait(None) {
+            tracing::warn!(%e, "Failed to wait for a card");
+            thread::sleep(SLEEP_INTERVAL);
+            continue;
+        }
 
         match reader.read() {
             Ok(None) => match pause_playback(&mut client) {
@@ -68,7 +70,7 @@ fn main() {
                 Err(e) => tracing::error!(%e, %uri, "Failed to start playback"),
             },
             Err(e) => {
-                tracing::error!(%e, "Failed to read the URI from the card");
+                tracing::warn!(%e, "Failed to read the URI from the card");
             }
         }
     }

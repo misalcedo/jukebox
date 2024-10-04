@@ -116,7 +116,11 @@ impl Reader {
         while self.state.contains(State::PRESENT)
             == reader_states[0].event_state().contains(State::PRESENT)
         {
-            self.ctx.get_status_change(timeout, &mut reader_states)?;
+            if let Err(e) = self.ctx.get_status_change(timeout, &mut reader_states) {
+                // reset the state if we can't get the status
+                self.state = State::UNAWARE;
+                return Err(anyhow!(e));
+            }
         }
 
         self.state = reader_states[0].event_state();
