@@ -1,3 +1,5 @@
+use crate::player::Observer;
+
 slint::slint! {
 export component App inherits Window {
         preferred-width: 640px;
@@ -11,7 +13,14 @@ export component App inherits Window {
 }
 }
 
-pub fn run() -> anyhow::Result<()> {
+pub fn run() -> anyhow::Result<App> {
     let app = App::new()?;
-    Ok(app.run()?)
+    // slint::invoke_from_event_loop(|| {
+    //     match playable {
+    //         Playable::Track(track) => {}
+    //         Playable::Playlist(playlist) => {}
+    //         Playable::Album(album) => {}
+    //     }
+    // })?;
+    Ok(app)
 }

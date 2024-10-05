@@ -4,22 +4,52 @@ use anyhow::anyhow;
 use rand::prelude::SliceRandom;
 use std::collections::HashSet;
 
+pub trait Observer {
+    fn on_playback_started(&self, playable: Playable);
+
+    fn on_playback_paused(&self);
+}
+
+impl Observer for () {
+    fn on_playback_started(&self, _: Playable) {}
+
+    fn on_playback_paused(&self) {}
+}
+
 pub enum Playable {
     Track(Track),
     Playlist(Playlist),
     Album(Album),
 }
 
-pub struct Player {}
+pub struct Player<O> {
+    observer: O,
+}
 
-impl Default for Player {
-    fn default() -> Self {
-        Self {}
+impl<O> From<O> for Player<O>
+where
+    O: Observer,
+{
+    fn from(observer: O) -> Self {
+        Self {
+            observer
+        }
     }
 }
 
-impl Player {
-    pub fn run(&mut self, arguments: &cli::Arguments) -> anyhow::Result<()> {
+impl Default for Player<()> {
+    fn default() -> Self {
+        Self {
+            observer: (),
+        }
+    }
+}
+
+impl<O> Player<O>
+where
+    O: Observer,
+{
+    pub fn run(&self, arguments: &cli::Arguments) -> anyhow::Result<()> {
         let oauth = token::Client::new(arguments.client_id.clone(), arguments.token_cache.clone());
         let mut client = spotify::Client::new(oauth, arguments.market.clone());
 
@@ -32,14 +62,14 @@ impl Player {
             reader.wait(None)?;
 
             match reader.read() {
-                Ok(None) => match pause_playback(&mut client) {
+                Ok(None) => match pause_playback(&mut client, &self.observer) {
                     Ok(_) => tracing::info!("Paused playback"),
                     Err(e) => tracing::error!(%e, "Failed to pause playback"),
                 },
                 Ok(Some(uri)) if uri.is_empty() => {
                     tracing::info!("Read empty tag");
                 }
-                Ok(Some(uri)) => match start_playback(&mut client, device.id.clone(), uri.clone()) {
+                Ok(Some(uri)) => match start_playback(&mut client, device.id.clone(), uri.clone(), &self.observer) {
                     Ok(_) => tracing::info!(%uri, "Started playback"),
                     Err(e) => tracing::error!(%e, %uri, "Failed to start playback"),
                 },
@@ -79,7 +109,10 @@ fn choose_device(client: &mut spotify::Client, name: Option<&str>) -> anyhow::Re
     }
 }
 
-fn pause_playback(client: &mut spotify::Client) -> anyhow::Result<()> {
+fn pause_playback<O>(client: &mut spotify::Client, observer: &O) -> anyhow::Result<()>
+where
+    O: Observer,
+{
     // Song may not be playing.
     if let Err(e) = client.pause(None) {
         if e.status() == Some(reqwest::StatusCode::FORBIDDEN) {
@@ -87,14 +120,19 @@ fn pause_playback(client: &mut spotify::Client) -> anyhow::Result<()> {
         }
     };
 
+    observer.on_playback_paused();
+
     Ok(())
 }
 
-fn start_playback(
+fn start_playback<O>(
     client: &mut spotify::Client,
     device_id: String,
     uri: String,
-) -> anyhow::Result<()> {
+    observer: &O,
+) -> anyhow::Result<()> where
+    O: Observer,
+{
     let uri: spotify::Uri = uri.as_str().parse()?;
     let mut uris = Vec::new();
 
@@ -108,7 +146,7 @@ fn start_playback(
         "track" => {
             let track = client.get_track(&uri.id)?;
             uris.push(uri.to_string());
-            set_now_playing(Playable::Track(track))?;
+            observer.on_playback_started(Playable::Track(track));
         }
         "playlist" => {
             let playlist = client.get_playlist(&uri.id)?;
@@ -116,7 +154,7 @@ fn start_playback(
             for item in playlist.tracks.items.iter() {
                 uris.push(item.track.uri.clone());
             }
-            set_now_playing(Playable::Playlist(playlist))?;
+            observer.on_playback_started(Playable::Playlist(playlist));
         }
         "album" => {
             let album = client.get_album(&uri.id)?;
@@ -126,7 +164,7 @@ fn start_playback(
                     uris.push(item.uri.clone());
                 }
             }
-            set_now_playing(Playable::Album(album))?;
+            observer.on_playback_started(Playable::Album(album));
         }
         _ => {
             return Err(anyhow!("Unsupported URI category"));
@@ -140,21 +178,4 @@ fn start_playback(
         let request = StartPlaybackRequest::from(uris);
         Ok(client.play(Some(device_id), &request)?)
     }
-}
-
-#[cfg(feature = "ui")]
-pub fn set_now_playing(playable: Playable) -> anyhow::Result<()> {
-    slint::invoke_from_event_loop(|| {
-        match playable {
-            Playable::Track(track) => {}
-            Playable::Playlist(playlist) => {}
-            Playable::Album(album) => {}
-        }
-    })?;
-    Ok(())
-}
-
-#[cfg(not(feature = "ui"))]
-pub fn set_now_playing(_: Playable) -> anyhow::Result<()> {
-    Ok(())
 }

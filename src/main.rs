@@ -22,22 +22,7 @@ fn main() {
         eprintln!("Failed to configure logging: {e}");
     };
 
-    let mut player = Player::default();
-
-    let join_handle = thread::spawn(move || {
-        loop {
-            match player.run(&arguments) {
-                Ok(_) => (),
-                Err(e) => tracing::warn!(%e, "Restarting the player"),
-            }
-
-            thread::sleep(SLEEP_INTERVAL);
-        }
-    });
-
-    #[cfg(feature = "ui")]
-    app::run().expect("Failed to run the UI");
-    join_handle.join().expect("Failed to join the player thread");
+    run(arguments);
 }
 
 fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
@@ -61,4 +46,39 @@ fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     Ok(())
+}
+
+
+#[cfg(feature = "ui")]
+fn run(arguments: cli::Arguments) {
+    let mut player = Player::default();
+
+    let join_handle = thread::spawn(move || {
+        loop {
+            match player.run(&arguments) {
+                Ok(_) => (),
+                Err(e) => tracing::warn!(%e, "Restarting the player"),
+            }
+
+            thread::sleep(SLEEP_INTERVAL);
+        }
+    });
+
+    app::run().expect("Failed to run the UI");
+
+    join_handle.join().expect("Failed to join the player thread");
+}
+
+#[cfg(not(feature = "ui"))]
+fn run(arguments: cli::Arguments) {
+    let player = Player::default();
+
+    loop {
+        match player.run(&arguments) {
+            Ok(_) => (),
+            Err(e) => tracing::warn!(%e, "Restarting the player"),
+        }
+
+        thread::sleep(SLEEP_INTERVAL);
+    }
 }
