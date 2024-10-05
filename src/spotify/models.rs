@@ -1,4 +1,3 @@
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
@@ -68,17 +67,6 @@ pub struct DeviceIdList {
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Offset {
     pub position: u64,
-}
-
-impl Offset {
-    pub fn random(value: u64) -> Self {
-        let mut rng = rand::thread_rng();
-        let position = rng.gen_range(0..value);
-
-        Self {
-            position
-        }
-    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]

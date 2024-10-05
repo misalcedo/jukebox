@@ -4199,6 +4199,7 @@ dependencies = [
  "i-slint-backend-selector",
  "i-slint-core",
  "i-slint-renderer-femtovg",
+ "log",
  "num-traits",
  "once_cell",
  "pin-weak",

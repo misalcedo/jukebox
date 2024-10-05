@@ -1,5 +1,5 @@
 slint::slint! {
-export component MainWindow inherits Window {
+export component App inherits Window {
         preferred-width: 640px;
         preferred-height: 400px;
         icon: @image-url("assets/jukebox.png");
@@ -12,6 +12,6 @@ export component MainWindow inherits Window {
 }
 
 pub fn run() -> anyhow::Result<()> {
-    let main_window = MainWindow::new()?;
-    Ok(main_window.run()?)
+    let app = App::new()?;
+    Ok(app.run()?)
 }
