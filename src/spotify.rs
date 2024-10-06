@@ -1,4 +1,4 @@
-use crate::spotify::models::{Album, DeviceList, Playlist, Queue, StartPlaybackRequest, Track};
+use crate::spotify::models::{Album, DeviceList, PlaybackState, Playlist, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
 use std::error::Error;
@@ -135,9 +135,10 @@ impl Client {
         Ok(())
     }
 
-    pub fn get_queue(&mut self) -> Result<Queue> {
+    pub fn get_playback_state(&mut self) -> Result<PlaybackState> {
         self.http
-            .get("https://api.spotify.com/v1/me/player/queue")
+            .get("https://api.spotify.com/v1/me/player")
+            .query(&[("market", self.market.as_str())])
             .header("Authorization", self.oauth.authorization())
             .body("")
             .send()?

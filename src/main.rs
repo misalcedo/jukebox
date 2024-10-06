@@ -54,7 +54,7 @@ fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
 #[cfg(feature = "ui")]
 fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
     let window = app::Window::new()?;
-    let player = Player::from(window.observer());
+    let mut player = Player::from(window.observer());
 
     let join_handle = thread::spawn(move || {
         loop {
@@ -70,7 +70,7 @@ fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
     window.run()?;
 
     if let Err(_) = join_handle.join() {
-        return Err(anyhow!("Failed to join the player thread"));
+        return Err(anyhow::anyhow!("Failed to join the player thread"));
     }
 
     Ok(())
@@ -78,7 +78,7 @@ fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
 
 #[cfg(not(feature = "ui"))]
 fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
-    let player = Player::default();
+    let mut player = Player::default();
 
     loop {
         match player.run(&arguments) {

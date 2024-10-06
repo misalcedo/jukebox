@@ -72,7 +72,7 @@ pub struct Offset {
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StartPlaybackRequest {
     pub context_uri: Option<String>,
-    pub uris: Option<Vec<String>>,
+    pub uris: Vec<String>,
     pub offset: Option<Offset>,
     pub position_ms: u64,
 }
@@ -81,7 +81,7 @@ impl From<Vec<String>> for StartPlaybackRequest {
     fn from(value: Vec<String>) -> Self {
         Self {
             context_uri: None,
-            uris: Some(value),
+            uris: value,
             offset: None,
             position_ms: 0,
         }
@@ -222,4 +222,19 @@ pub struct Playlist {
 pub struct Queue {
     pub currently_playing: Option<Item>,
     pub queue: Vec<Item>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+pub struct PlaybackState {
+    pub device: Option<Device>,
+    pub repeat_state: String,
+    pub shuffle_state: bool,
+    pub smart_shuffle_state: bool,
+    pub context: Option<Context>,
+    pub timestamp: u64,
+    pub progress_ms: u64,
+    pub is_playing: bool,
+    pub item: Option<Item>,
+    pub currently_playing_type: String,
+    pub actions: Actions,
 }
