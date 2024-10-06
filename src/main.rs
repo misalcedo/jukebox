@@ -8,7 +8,6 @@ mod token;
 mod app;
 
 use crate::player::Player;
-use anyhow::anyhow;
 use clap::Parser;
 use std::thread;
 use std::time::Duration;
