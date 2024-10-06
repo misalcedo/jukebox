@@ -172,6 +172,7 @@ fn start_playback<O>(
     }
 
     if !tracks.is_empty() && tracks.iter().all(|t| uris.contains(t)) {
+        tracing::info!("Skipping to the next track in the queue");
         Ok(client.skip_to_next(None)?)
     } else {
         uris.shuffle(&mut rand::thread_rng());
