@@ -23,6 +23,7 @@ pub enum Playable {
 
 pub struct Player<O> {
     observer: O,
+    device_id: Option<String>,
     last_request: StartPlaybackRequest,
 }
 
@@ -33,6 +34,7 @@ where
     fn from(observer: O) -> Self {
         Self {
             observer,
+            device_id: None,
             last_request: StartPlaybackRequest::default(),
         }
     }
@@ -42,6 +44,7 @@ impl Default for Player<()> {
     fn default() -> Self {
         Self {
             observer: (),
+            device_id: None,
             last_request: StartPlaybackRequest::default(),
         }
     }
@@ -59,6 +62,8 @@ where
 
         let device = choose_device(&mut client, arguments.device.as_deref())?;
 
+        self.device_id = Some(device.id);
+
         let ctx = pcsc::Context::establish(pcsc::Scope::User)?;
         let mut reader = choose_reader(ctx)?;
 
@@ -73,7 +78,7 @@ where
                 Ok(Some(uri)) if uri.is_empty() => {
                     tracing::info!("Read empty tag");
                 }
-                Ok(Some(uri)) => match self.start_playback(&mut client, device.id.clone(), uri.clone()) {
+                Ok(Some(uri)) => match self.start_playback(&mut client, uri.clone()) {
                     Ok(_) => tracing::info!(%uri, "Started playback"),
                     Err(e) => tracing::error!(%e, %uri, "Failed to start playback"),
                 },
@@ -100,7 +105,6 @@ where
     fn start_playback(
         &mut self,
         client: &mut spotify::Client,
-        device_id: String,
         uri: String,
     ) -> anyhow::Result<()> {
         let uri: spotify::Uri = uri.as_str().parse()?;
@@ -135,18 +139,20 @@ where
             }
         }
 
-        let state = client.get_playback_state()?;
+        if let Some(state) = client.get_playback_state()? {
+            self.device_id = Some(state.device.id);
 
-        if let Some(item) = state.item {
-            if self.last_request.uris.contains(&item.uri) && self.last_request.uris.last() != Some(&item.uri) {
-                client.skip_to_next(None)?;
-                return Ok(());
+            if let Some(item) = state.item {
+                if self.last_request.uris.contains(&item.uri) && self.last_request.uris.last() != Some(&item.uri) {
+                    client.skip_to_next(None)?;
+                    return Ok(());
+                }
             }
         }
 
         uris.shuffle(&mut rand::thread_rng());
         self.last_request = StartPlaybackRequest::from(uris);
-        client.play(Some(device_id), &self.last_request)?;
+        client.play(self.device_id.clone(), &self.last_request)?;
         Ok(())
     }
 }
