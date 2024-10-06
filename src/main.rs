@@ -8,6 +8,7 @@ mod token;
 mod app;
 
 use crate::player::Player;
+use anyhow::anyhow;
 use clap::Parser;
 use std::thread;
 use std::time::Duration;
@@ -22,7 +23,9 @@ fn main() {
         eprintln!("Failed to configure logging: {e}");
     };
 
-    run(arguments);
+    if let Err(e) = run(arguments) {
+        tracing::error!(%e, "Unable to run the jukebox");
+    }
 }
 
 fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
@@ -50,13 +53,14 @@ fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
 
 
 #[cfg(feature = "ui")]
-fn run(arguments: cli::Arguments) {
-    let mut player = Player::default();
+fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
+    let window = app::Window::new()?;
+    let player = Player::from(window.observer());
 
     let join_handle = thread::spawn(move || {
         loop {
             match player.run(&arguments) {
-                Ok(_) => (),
+                Ok(_) => break,
                 Err(e) => tracing::warn!(%e, "Restarting the player"),
             }
 
@@ -64,21 +68,27 @@ fn run(arguments: cli::Arguments) {
         }
     });
 
-    app::run().expect("Failed to run the UI");
+    window.run()?;
 
-    join_handle.join().expect("Failed to join the player thread");
+    if let Err(_) = join_handle.join() {
+        return Err(anyhow!("Failed to join the player thread"));
+    }
+
+    Ok(())
 }
 
 #[cfg(not(feature = "ui"))]
-fn run(arguments: cli::Arguments) {
+fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
     let player = Player::default();
 
     loop {
         match player.run(&arguments) {
-            Ok(_) => (),
+            Ok(_) => break,
             Err(e) => tracing::warn!(%e, "Restarting the player"),
         }
 
         thread::sleep(SLEEP_INTERVAL);
     }
+
+    Ok(())
 }
