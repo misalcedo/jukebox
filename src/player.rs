@@ -10,9 +10,17 @@ pub trait Observer {
 }
 
 impl Observer for () {
-    fn on_playback_started(&self, _: Playable) {}
+    fn on_playback_started(&self, playable: Playable) {
+        match playable {
+            Playable::Track(track) => tracing::info!(%track.name, "Playing track"),
+            Playable::Playlist(playlist) => tracing::info!(%playlist.name, "Playing playlist"),
+            Playable::Album(album) => tracing::info!(%album.name, "Playing album")
+        }
+    }
 
-    fn on_playback_paused(&self) {}
+    fn on_playback_paused(&self) {
+        tracing::info!("Paused playback")
+    }
 }
 
 pub enum Playable {
@@ -71,16 +79,14 @@ where
             reader.wait(None)?;
 
             match reader.read() {
-                Ok(None) => match self.pause_playback(&mut client) {
-                    Ok(_) => tracing::info!("Paused playback"),
-                    Err(e) => tracing::error!(%e, "Failed to pause playback"),
+                Ok(None) => if let Err(e) = self.pause_playback(&mut client) {
+                    tracing::error!(%e, "Failed to pause playback");
                 },
                 Ok(Some(uri)) if uri.is_empty() => {
                     tracing::info!("Read empty tag");
                 }
-                Ok(Some(uri)) => match self.start_playback(&mut client, uri.clone()) {
-                    Ok(_) => tracing::info!(%uri, "Started playback"),
-                    Err(e) => tracing::error!(%e, %uri, "Failed to start playback"),
+                Ok(Some(uri)) => if let Err(e) = self.start_playback(&mut client, uri.clone()) {
+                    tracing::error!(%e, %uri, "Failed to start playback");
                 },
                 Err(e) => {
                     tracing::warn!(%e, "Failed to read the URI from the card");

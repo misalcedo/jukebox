@@ -29,7 +29,7 @@ impl Window {
         Ok(Self { main_window })
     }
 
-    pub fn observer(&self) -> impl Observer {
+    pub fn observer(&self) -> impl Observer + Clone {
         self.main_window.as_weak()
     }
 
