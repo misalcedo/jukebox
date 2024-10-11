@@ -145,18 +145,33 @@ where
             }
         }
 
+        if uris.is_empty() {
+            return Err(anyhow!("No tracks to play"));
+        }
+
+        let mut current = None;
         if let Some(state) = client.get_playback_state()? {
+            // Continue playback on the current device.
             self.device_id = Some(state.device.id);
 
-            if let Some(item) = state.item {
-                if self.last_request.uris.contains(&item.uri) && self.last_request.uris.last() != Some(&item.uri) {
-                    client.skip_to_next(None)?;
-                    return Ok(());
-                }
+            current = state.item.map(|item| item.uri);
+        }
+
+        // Skip to the next song if the current song is not the last song in the queue, but is part of the queue.
+        let mut iterator = self.last_request.uris.iter().rev();
+        if iterator.next() != current.as_ref() && iterator.any(|i| Some(i) == current.as_ref()) {
+            client.skip_to_next(None)?;
+            return Ok(());
+        }
+
+        // Shuffle until the current song is not the first in the queue.
+        loop {
+            uris.shuffle(&mut rand::thread_rng());
+            if uris.first() != current.as_ref() {
+                break;
             }
         }
 
-        uris.shuffle(&mut rand::thread_rng());
         self.last_request = StartPlaybackRequest::from(uris);
         client.play(self.device_id.clone(), &self.last_request)?;
         Ok(())
