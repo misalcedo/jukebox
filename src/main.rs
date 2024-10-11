@@ -58,7 +58,7 @@ fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
 
     let join_handle = thread::spawn(move || {
         loop {
-            let mut player = Player::from(observer.clone());
+            let player = Player::from(observer.clone());
             match player.run(&arguments) {
                 Ok(_) => break,
                 Err(e) => tracing::warn!(%e, "Restarting the player"),
@@ -80,7 +80,7 @@ fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
 #[cfg(not(feature = "ui"))]
 fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
     loop {
-        let mut player = Player::default();
+        let player = Player::default();
         match player.run(&arguments) {
             Ok(_) => break,
             Err(e) => tracing::warn!(%e, "Restarting the player"),
