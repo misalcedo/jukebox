@@ -151,7 +151,7 @@ fn start_playback(
     let mut iterator = request.uris.iter().rev();
     if iterator.next() != current.as_ref() && iterator.any(|i| Some(i) == current.as_ref()) {
         client.skip_to_next(None)?;
-        tracing::info!(%?current, %request.uris, "Skipping to the next song in the queue");
+        tracing::info!(%uri, name = playable.name(), %?current, %request.uris, "Skipping to the next song in the queue");
         return Ok(playable);
     }
 
@@ -166,6 +166,8 @@ fn start_playback(
 
     *request = StartPlaybackRequest::from(uris);
     client.play(device_id.clone(), request)?;
+
+    tracing::info!(%uri, name = playable.name(), %?current, %request.uris, "Playing the songs resolved from the tag");
 
     Ok(playable)
 }
