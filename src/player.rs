@@ -149,6 +149,9 @@ fn start_playback(
 
     if tracks.iter().any(|t| Some(t) == current.as_ref()) {
         request.uris.rotate_left(1);
+        while request.uris.first() == current.as_ref() {
+            request.uris.rotate_left(1);
+        }
     } else {
         tracks.shuffle(&mut rand::thread_rng());
     }
