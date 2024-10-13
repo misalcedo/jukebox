@@ -147,6 +147,8 @@ fn start_playback(
         current = state.item.map(|item| item.uri);
     }
 
+    tracing::info!(%uri, %playable, current = ?current, uris = ?request.uris, "Testing for current state of the player");
+
     // Skip to the next song if the current song is not the last song in the queue, but is part of the queue.
     let mut iterator = request.uris.iter().rev();
     if iterator.next() != current.as_ref() && iterator.any(|i| Some(i) == current.as_ref()) {
