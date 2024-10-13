@@ -1,4 +1,5 @@
 use crate::spotify::models::{Album, Playlist, Track};
+use std::fmt::{Display, Formatter};
 
 pub enum Playable {
     Track(Track),
@@ -47,5 +48,15 @@ impl Playable {
         };
 
         uris
+    }
+}
+
+impl Display for Playable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Playable::Track(track) => write!(f, "Track: {}", track.name),
+            Playable::Playlist(playlist) => write!(f, "Playlist: {}", playlist.name),
+            Playable::Album(album) => write!(f, "Album: {}", album.name),
+        }
     }
 }
