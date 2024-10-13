@@ -123,18 +123,6 @@ impl Client {
         Ok(())
     }
 
-    pub fn skip_to_next(&mut self, device_id: Option<String>) -> Result<()> {
-        self.http
-            .post("https://api.spotify.com/v1/me/player/next")
-            .query(&[("device_id", device_id)])
-            .header("Authorization", self.oauth.authorization())
-            .body("")
-            .send()?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
     pub fn get_playback_state(&mut self) -> Result<Option<PlaybackState>> {
         let response = self.http
             .get("https://api.spotify.com/v1/me/player")

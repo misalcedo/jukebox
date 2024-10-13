@@ -147,9 +147,10 @@ fn start_playback(
         current = state.item.map(|item| item.uri);
     }
 
-    tracks.shuffle(&mut rand::thread_rng());
-    if tracks.first() == current.as_ref() {
-        tracks.rotate_left(1);
+    if request.uris.any(|t| Some(t) == current.as_ref()) {
+        request.uris.rotate_left(1);
+    } else {
+        tracks.shuffle(&mut rand::thread_rng());
     }
 
     *request = StartPlaybackRequest::from(tracks);
