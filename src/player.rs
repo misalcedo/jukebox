@@ -134,9 +134,9 @@ fn start_playback(
     uri: &str,
 ) -> anyhow::Result<Playable> {
     let playable = resolve_uri(client, uri)?;
-    let mut uris = playable.uris();
+    let mut tracks = playable.uris();
 
-    if uris.is_empty() {
+    if tracks.is_empty() {
         return Err(anyhow!("No tracks to play"));
     }
 
@@ -147,26 +147,12 @@ fn start_playback(
         current = state.item.map(|item| item.uri);
     }
 
-    tracing::info!(%uri, %playable, current = ?current, uris = ?request.uris, "Testing for current state of the player");
-
-    // Skip to the next song if the current song is not the last song in the queue, but is part of the queue.
-    let mut iterator = request.uris.iter().rev();
-    if iterator.next() != current.as_ref() && iterator.any(|i| Some(i) == current.as_ref()) {
-        client.skip_to_next(None)?;
-        tracing::info!(%uri, %playable, current = ?current, uris = ?request.uris, "Skipping to the next song in the queue");
-        return Ok(playable);
+    tracks.shuffle(&mut rand::thread_rng());
+    if tracks.first() == current.as_ref() {
+        tracks.rotate_left(1);
     }
 
-    // Shuffle until the current song is not the first in the queue.
-    let mut rng = rand::thread_rng();
-    loop {
-        uris.shuffle(&mut rng);
-        if uris.first() != current.as_ref() {
-            break;
-        }
-    }
-
-    *request = StartPlaybackRequest::from(uris);
+    *request = StartPlaybackRequest::from(tracks);
     client.play(device_id.clone(), request)?;
 
     tracing::info!(%uri, %playable, current = ?current, uris = ?request.uris, "Playing the songs resolved from the tag");
