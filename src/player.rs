@@ -147,7 +147,7 @@ fn start_playback(
         current = state.item.map(|item| item.uri);
     }
 
-    if request.uris.iter().any(|t| Some(t) == current.as_ref()) {
+    if tracks.any(|t| Some(t) == current.as_ref()) {
         request.uris.rotate_left(1);
     } else {
         tracks.shuffle(&mut rand::thread_rng());
