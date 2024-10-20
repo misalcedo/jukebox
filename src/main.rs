@@ -48,17 +48,22 @@ fn set_log_level(arguments: &Arguments) -> anyhow::Result<()> {
 
 fn run(arguments: Arguments) -> anyhow::Result<()> {
     let runtime = tokio::runtime::Runtime::new()?;
-    let (sender, receiver) = tokio::sync::watch::channel(None);
+    let results = runtime.block_on(async {
+        let (sender, receiver) = tokio::sync::watch::channel(None);
 
-    let mut group = tokio::task::JoinSet::new();
+        let mut group = tokio::task::JoinSet::new();
 
-    group.spawn_blocking(|| read_loop(sender));
-    group.spawn(player_loop(arguments, receiver));
+        group.spawn_blocking(|| read_loop(sender));
+        group.spawn(player_loop(arguments, receiver.clone()));
+        group.spawn(web_loop(receiver.clone()));
+        group.join_all().await
+    });
 
-    runtime
-        .block_on(group.join_next())
-        .transpose()?
-        .transpose()?;
+    for result in results {
+        if let Err(e) = result {
+            tracing::error!(%e, "Failed to run the jukebox");
+        }
+    }
 
     Ok(())
 }
@@ -105,4 +110,21 @@ async fn player_loop(
             }
         };
     }
+}
+
+async fn web_loop(receiver: Receiver<Option<String>>) -> anyhow::Result<()> {
+    let app = axum::Router::new()
+        .route("/", axum::routing::get(handler))
+        .with_state(receiver);
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:5853").await?;
+
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+async fn handler(
+    axum::extract::State(state): axum::extract::State<Receiver<Option<String>>>,
+) -> axum::response::Html<String> {
+    axum::response::Html(format!("<h1>{:?}</h1>", state.borrow().as_ref()))
 }
