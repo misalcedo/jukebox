@@ -4,16 +4,12 @@ mod player;
 mod spotify;
 mod token;
 
-#[cfg(feature = "ui")]
-mod app;
-
+use crate::card::Reader;
+use crate::cli::Arguments;
 use crate::player::Player;
 use clap::Parser;
-use std::thread;
-use std::time::Duration;
+use tokio::sync::watch::{Receiver, Sender};
 use tracing_log::LogTracer;
-
-static SLEEP_INTERVAL: Duration = Duration::from_secs(1);
 
 fn main() {
     let arguments = cli::Arguments::parse();
@@ -27,7 +23,7 @@ fn main() {
     }
 }
 
-fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
+fn set_log_level(arguments: &Arguments) -> anyhow::Result<()> {
     LogTracer::init()?;
 
     let level = match arguments.verbosity {
@@ -50,44 +46,63 @@ fn set_log_level(arguments: &cli::Arguments) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn run(arguments: Arguments) -> anyhow::Result<()> {
+    let runtime = tokio::runtime::Runtime::new()?;
+    let (sender, receiver) = tokio::sync::watch::channel(None);
 
-#[cfg(feature = "ui")]
-fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
-    let window = app::Window::new()?;
-    let observer = window.observer();
+    let mut group = tokio::task::JoinSet::new();
 
-    let join_handle = thread::spawn(move || {
-        loop {
-            let player = Player::from(observer.clone());
-            match player.run(&arguments) {
-                Ok(_) => break,
-                Err(e) => tracing::warn!(%e, "Restarting the player"),
-            }
+    group.spawn_blocking(|| read_loop(sender));
+    group.spawn(player_loop(arguments, receiver));
 
-            thread::sleep(SLEEP_INTERVAL);
-        }
-    });
-
-    window.run()?;
-
-    if let Err(_) = join_handle.join() {
-        return Err(anyhow::anyhow!("Failed to join the player thread"));
-    }
+    runtime
+        .block_on(group.join_next())
+        .transpose()?
+        .transpose()?;
 
     Ok(())
 }
 
-#[cfg(not(feature = "ui"))]
-fn run(arguments: cli::Arguments) -> anyhow::Result<()> {
+fn read_loop(sender: Sender<Option<String>>) -> anyhow::Result<()> {
+    let ctx = pcsc::Context::establish(pcsc::Scope::User)?;
+    let mut reader = Reader::try_from(ctx)?;
+
     loop {
-        let player = Player::default();
-        match player.run(&arguments) {
-            Ok(_) => break,
-            Err(e) => tracing::warn!(%e, "Restarting the player"),
+        reader.wait(None)?;
+        match reader.read() {
+            Ok(card) => {
+                sender.send(card)?;
+            }
+            Err(e) => {
+                tracing::warn!(%e, "Failed to read the URI from the card");
+                sender.send(None)?;
+            }
         }
-
-        thread::sleep(SLEEP_INTERVAL);
     }
+}
 
-    Ok(())
+async fn player_loop(
+    arguments: Arguments,
+    mut receiver: Receiver<Option<String>>,
+) -> anyhow::Result<()> {
+    let mut player = Player::try_from(arguments)?;
+
+    loop {
+        receiver.changed().await?;
+
+        let value = receiver.borrow_and_update().clone();
+
+        match value {
+            Some(uri) => {
+                if let Err(e) = player.play(uri).await {
+                    tracing::error!(%e, "Failed to start playback");
+                }
+            }
+            None => {
+                if let Err(e) = player.pause().await {
+                    tracing::error!(%e, "Failed to pause playback");
+                }
+            }
+        };
+    }
 }

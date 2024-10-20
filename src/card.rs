@@ -21,6 +21,22 @@ pub struct Reader {
     state: State,
 }
 
+impl TryFrom<Context> for Reader {
+    type Error = anyhow::Error;
+
+    fn try_from(ctx: Context) -> Result<Self, Self::Error> {
+        for reader in ctx.list_readers_owned()? {
+            if let Ok(name) = reader.to_str() {
+                if name.contains("PICC") {
+                    return Ok(Reader::new(ctx, reader));
+                }
+            }
+        }
+
+        Err(anyhow!("No PICC readers are connected"))
+    }
+}
+
 impl Reader {
     pub fn new(ctx: Context, reader: CString) -> Reader {
         Reader {
@@ -49,55 +65,55 @@ impl Reader {
                     [3, 4, b'\xD8', 0, 0, 0, ..] => Ok(Some(String::new())),
                     // URI record (single or the first of multiple)
                     [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', prefix]
-                    if *record_length >= 4 && *uri_length > 0 =>
-                        {
-                            let mut bytes_read = record.len();
-                            let mut remaining = *uri_length - 1;
-                            let mut command = [
-                                b'\xFF',
-                                b'\xB0',
-                                b'\x00',
-                                INITIAL_DATA_BLOCK,
-                                MAX_READ_BYTES,
-                            ];
+                        if *record_length >= 4 && *uri_length > 0 =>
+                    {
+                        let mut bytes_read = record.len();
+                        let mut remaining = *uri_length - 1;
+                        let mut command = [
+                            b'\xFF',
+                            b'\xB0',
+                            b'\x00',
+                            INITIAL_DATA_BLOCK,
+                            MAX_READ_BYTES,
+                        ];
 
-                            let uri_prefix = match prefix {
-                                b'\x04' => HTTPS_PREFIX,
-                                _ => b"",
+                        let uri_prefix = match prefix {
+                            b'\x04' => HTTPS_PREFIX,
+                            _ => b"",
+                        };
+
+                        let mut data = Vec::with_capacity(uri_prefix.len() + remaining as usize);
+                        data.extend_from_slice(uri_prefix);
+
+                        while remaining > 0 {
+                            let offset = u8::try_from(bytes_read)?;
+                            let block = INITIAL_DATA_BLOCK + (offset / BLOCK_SIZE);
+
+                            // Update the block
+                            command[3] = block;
+
+                            // Update the requested bytes
+                            command[4] = remaining.min(MAX_READ_BYTES);
+
+                            let data_response = card.transmit(&command, &mut buffer)?;
+                            let Some(mut chunk) = data_response.strip_suffix(SUCCESS) else {
+                                return Err(anyhow!("The read operation failed for data"));
                             };
 
-                            let mut data = Vec::with_capacity(uri_prefix.len() + remaining as usize);
-                            data.extend_from_slice(uri_prefix);
-
-                            while remaining > 0 {
-                                let offset = u8::try_from(bytes_read)?;
-                                let block = INITIAL_DATA_BLOCK + (offset / BLOCK_SIZE);
-
-                                // Update the block
-                                command[3] = block;
-
-                                // Update the requested bytes
-                                command[4] = remaining.min(MAX_READ_BYTES);
-
-                                let data_response = card.transmit(&command, &mut buffer)?;
-                                let Some(mut chunk) = data_response.strip_suffix(SUCCESS) else {
-                                    return Err(anyhow!("The read operation failed for data"));
-                                };
-
-                                // Skip already read bytes
-                                let skip = (offset % BLOCK_SIZE) as usize;
-                                if skip != 0 {
-                                    chunk = &chunk[skip..];
-                                }
-
-                                remaining -= u8::try_from(chunk.len())?;
-                                bytes_read += chunk.len();
-
-                                data.extend_from_slice(chunk);
+                            // Skip already read bytes
+                            let skip = (offset % BLOCK_SIZE) as usize;
+                            if skip != 0 {
+                                chunk = &chunk[skip..];
                             }
 
-                            Ok(Some(String::from_utf8(data)?))
+                            remaining -= u8::try_from(chunk.len())?;
+                            bytes_read += chunk.len();
+
+                            data.extend_from_slice(chunk);
                         }
+
+                        Ok(Some(String::from_utf8(data)?))
+                    }
                     _ => {
                         tracing::warn!(record = format!("{:?}", record), "Unknown record");
                         Ok(Some(String::new()))
@@ -149,7 +165,9 @@ mod tests {
     fn set_led_and_buzzer() {
         let ctx = Context::establish(pcsc::Scope::User).unwrap();
         let reader = CString::new("ACS ACR1252 1S CL Reader PICC 0").unwrap();
-        let card = ctx.connect(&reader, pcsc::ShareMode::Direct, pcsc::Protocols::UNDEFINED).unwrap();
+        let card = ctx
+            .connect(&reader, pcsc::ShareMode::Direct, pcsc::Protocols::UNDEFINED)
+            .unwrap();
 
         // Disable buzzer in all cases, but keep the other settings as the default.
         let command = [0xE0, 0x00, 0x00, 0x21, 0x01, 0b01000101];
@@ -157,6 +175,9 @@ mod tests {
         let mut buffer = vec![0; 1024];
         let response = card.control(ctl_code(3500), &command, &mut buffer).unwrap();
 
-        assert_eq!(format!("{:X?}", response), String::from("[E1, 0, 0, 0, 1, 45]"));
+        assert_eq!(
+            format!("{:X?}", response),
+            String::from("[E1, 0, 0, 0, 1, 45]")
+        );
     }
 }

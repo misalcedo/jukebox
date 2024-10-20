@@ -8,22 +8,6 @@ pub enum Playable {
 }
 
 impl Playable {
-    pub fn name(&self) -> &str {
-        match self {
-            Playable::Track(track) => &track.name,
-            Playable::Playlist(playlist) => &playlist.name,
-            Playable::Album(album) => &album.name,
-        }
-    }
-
-    pub fn kind(&self) -> &str {
-        match self {
-            Playable::Track(_) => "Track",
-            Playable::Playlist(_) => "Playlist",
-            Playable::Album(_) => "Album",
-        }
-    }
-
     pub fn uris(&self) -> Vec<String> {
         let mut uris = Vec::new();
 
