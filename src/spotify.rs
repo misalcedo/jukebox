@@ -1,5 +1,5 @@
 use crate::spotify::models::{
-    Album, DeviceList, PlaybackState, Playlist, StartPlaybackRequest, Track,
+    Album, DeviceList, Playlist, StartPlaybackRequest, Track,
 };
 use crate::token;
 use reqwest::Result;
@@ -10,13 +10,10 @@ use url::Url;
 
 pub mod models;
 
-const MYSTERY: &'static str = "mystery";
-
 #[derive(Debug, Clone)]
 pub struct Uri {
     pub category: String,
     pub id: String,
-    pub mystery: bool,
 }
 
 impl Display for Uri {
@@ -60,19 +57,16 @@ impl FromStr for Uri {
                 Ok(Uri {
                     category: category.to_string(),
                     id: id.to_string(),
-                    mystery: false,
                 })
             }
             Some(("https", _)) => {
                 let url = Url::parse(s).map_err(|_| UriParseError)?;
-                let fragment = url.fragment();
                 let mut path = url.path_segments().into_iter().flatten();
 
                 match (path.next(), path.next()) {
                     (Some(category), Some(id)) => Ok(Uri {
                         category: category.to_string(),
                         id: id.to_string(),
-                        mystery: fragment == Some(MYSTERY),
                     }),
                     _ => Err(UriParseError),
                 }
@@ -145,24 +139,19 @@ impl Client {
         Ok(())
     }
 
-    pub async fn get_playback_state(&mut self) -> Result<Option<PlaybackState>> {
+    pub async fn skip_to_next(&mut self, device_id: Option<String>) -> Result<()> {
         let token = self.oauth.authorization().await.unwrap_or_default();
 
-        let response = self
-            .http
-            .get("https://api.spotify.com/v1/me/player")
-            .query(&[("market", self.market.as_str())])
+        self.http
+            .post("https://api.spotify.com/v1/me/player/next")
+            .query(&[("device_id", device_id)])
             .header("Authorization", token)
             .header("Content-Length", 0)
             .send()
             .await?
             .error_for_status()?;
 
-        if response.content_length().unwrap_or_default() == 0 {
-            return Ok(None);
-        }
-
-        response.json().await
+        Ok(())
     }
 
     pub async fn get_track(&mut self, id: &str) -> Result<Track> {

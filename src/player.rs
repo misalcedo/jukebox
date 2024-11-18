@@ -3,8 +3,10 @@ use anyhow::anyhow;
 use rand::prelude::SliceRandom;
 
 mod playable;
+mod time;
 
 use crate::cli::Arguments;
+use crate::player::time::StopWatch;
 use crate::spotify::models::StartPlaybackRequest;
 use crate::spotify::Uri;
 pub use playable::Playable;
@@ -12,8 +14,9 @@ pub use playable::Playable;
 pub struct Player {
     client: spotify::Client,
     preferred_device: Option<String>,
-    device_id: Option<String>,
-    uris: Vec<String>,
+    device_id: String,
+    last: Option<String>,
+    stop_watch: StopWatch,
 }
 
 impl TryFrom<Arguments> for Player {
@@ -26,47 +29,45 @@ impl TryFrom<Arguments> for Player {
         Ok(Self {
             client,
             preferred_device: arguments.device,
-            device_id: None,
-            uris: vec![],
+            device_id: String::default(),
+            last: None,
+            stop_watch: StopWatch::default(),
         })
     }
 }
 
 impl Player {
     pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
+        if self.device_id.is_empty() {
+            self.device_id = self.preferred_device().await?;
+        }
+
         let playable = self.resolve_uri(&uri).await?;
-        let mut tracks = playable.uris();
+        let songs = playable.songs();
 
-        if tracks.is_empty() {
-            return Err(anyhow!("No tracks to play"));
+        if songs.is_empty() {
+            return Err(anyhow!("No songs to play"));
         }
 
-        if self.device_id.is_none() {
-            let device_id = self.preferred_device().await?;
-            self.device_id = Some(device_id);
-        }
+        if self.last.as_deref() == Some(playable.uri()) {
+            let cutoff = songs.iter().map(|song| song.duration).sum();
 
-        let current = self
-            .client
-            .get_playback_state()
-            .await?
-            .and_then(|state| state.item.map(|item| item.uri));
-
-        match current {
-            Some(track) if tracks.contains(&track) => {
-                self.uris.rotate_left(1);
-                while self.uris.first() == Some(&track) {
-                    self.uris.rotate_left(1);
-                }
-            }
-            _ => {
-                tracks.shuffle(&mut rand::thread_rng());
-                self.uris = tracks;
+            if self.stop_watch.elapsed() < cutoff || self.stop_watch.laps() < songs.len() {
+                self.client.skip_to_next(None).await?;
+                self.stop_watch.start();
+                return Ok(());
             }
         }
 
-        let request = StartPlaybackRequest::from(self.uris.clone());
-        self.client.play(self.device_id.clone(), &request).await?;
+        let mut uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
+
+        uris.shuffle(&mut rand::thread_rng());
+
+        let request = StartPlaybackRequest::from(uris);
+
+        self.client.play(Some(self.device_id.clone()), &request).await?;
+        self.last = Some(playable.uri().to_string());
+        self.stop_watch.reset();
 
         Ok(())
     }
@@ -81,25 +82,16 @@ impl Player {
             return Err(anyhow::anyhow!(e));
         };
 
+        self.stop_watch.pause();
+
         Ok(())
     }
 
     async fn resolve_uri(&mut self, uri: &str) -> anyhow::Result<Playable> {
-        let uri: spotify::Uri = uri.parse()?;
+        let uri: Uri = uri.parse()?;
 
         match uri.category.as_str() {
             "track" => Ok(Playable::Track(self.client.get_track(&uri.id).await?)),
-            "playlist" if uri.mystery => {
-                let playable = Playable::Playlist(self.client.get_playlist(&uri.id).await?);
-                let mut tracks = playable.uris();
-
-                tracks.shuffle(&mut rand::thread_rng());
-
-                let track = tracks.first().ok_or_else(|| anyhow!("No tracks in playlist"))?;
-                let track_uri: Uri = track.parse()?;
-
-                Ok(Playable::Track(self.client.get_track(&track_uri.id).await?))
-            }
             "playlist" => Ok(Playable::Playlist(self.client.get_playlist(&uri.id).await?)),
             "album" => Ok(Playable::Album(self.client.get_album(&uri.id).await?)),
             _ => Err(anyhow!("Unsupported URI category")),

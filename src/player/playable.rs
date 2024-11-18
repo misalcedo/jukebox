@@ -1,5 +1,6 @@
 use crate::spotify::models::{Album, Playlist, Track};
 use std::fmt::{Display, Formatter};
+use std::time::Duration;
 
 pub enum Playable {
     Track(Track),
@@ -7,31 +8,53 @@ pub enum Playable {
     Album(Album),
 }
 
+pub struct Song {
+    pub uri: String,
+    pub duration: Duration,
+}
+
 impl Playable {
-    pub fn uris(&self) -> Vec<String> {
-        let mut uris = Vec::new();
+    pub fn uri(&self) -> &str {
+        match self {
+            Playable::Track(track) => &track.uri,
+            Playable::Playlist(playlist) => &playlist.uri,
+            Playable::Album(album) => &album.uri,
+        }
+    }
+
+    pub fn songs(&self) -> Vec<Song> {
+        let mut songs = Vec::new();
 
         match self {
             Playable::Track(track) => {
-                uris.push(track.uri.clone());
+                songs.push(Song {
+                    uri: track.uri.clone(),
+                    duration: Duration::from_millis(track.duration_ms),
+                });
             }
             Playable::Playlist(playlist) => {
-                uris.reserve(playlist.tracks.items.len());
+                songs.reserve(playlist.tracks.items.len());
                 for item in playlist.tracks.items.iter() {
-                    uris.push(item.track.uri.clone());
+                    songs.push(Song {
+                        uri: item.track.uri.clone(),
+                        duration: Duration::from_millis(item.track.duration_ms),
+                    });
                 }
             }
             Playable::Album(album) => {
                 if let Some(tracks) = &album.tracks {
-                    uris.reserve(tracks.items.len());
+                    songs.reserve(tracks.items.len());
                     for item in tracks.items.iter() {
-                        uris.push(item.uri.clone());
+                        songs.push(Song {
+                            uri: item.uri.clone(),
+                            duration: Duration::from_millis(item.duration_ms),
+                        });
                     }
                 }
             }
         };
 
-        uris
+        songs
     }
 }
 
