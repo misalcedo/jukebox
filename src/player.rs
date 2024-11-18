@@ -77,6 +77,8 @@ impl Player {
             if e.status() == Some(reqwest::StatusCode::FORBIDDEN) {
                 return Ok(());
             }
+
+            return Err(anyhow::anyhow!(e));
         };
 
         Ok(())

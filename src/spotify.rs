@@ -132,12 +132,12 @@ impl Client {
 
     pub async fn pause(&mut self, device_id: Option<String>) -> Result<()> {
         let token = self.oauth.authorization().await.unwrap_or_default();
-        
+
         self.http
             .put("https://api.spotify.com/v1/me/player/pause")
             .query(&[("device_id", device_id)])
             .header("Authorization", token)
-            .body("")
+            .header("Content-Length", 0)
             .send()
             .await?
             .error_for_status()?;
@@ -153,7 +153,7 @@ impl Client {
             .get("https://api.spotify.com/v1/me/player")
             .query(&[("market", self.market.as_str())])
             .header("Authorization", token)
-            .body("")
+            .header("Content-Length", 0)
             .send()
             .await?
             .error_for_status()?;
