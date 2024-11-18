@@ -7,9 +7,6 @@ pub struct Arguments {
     #[arg(short = 'v', long = None, env = "JUKEBOX_VERBOSITY", action = clap::ArgAction::Count)]
     pub verbosity: u8,
 
-    #[arg(short, long, env = "JUKEBOX_PROMPT")]
-    pub prompt: bool,
-
     #[arg(short, long, env = "JUKEBOX_CLIENT_ID")]
     pub client_id: String,
 

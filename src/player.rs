@@ -6,6 +6,7 @@ mod playable;
 
 use crate::cli::Arguments;
 use crate::spotify::models::StartPlaybackRequest;
+use crate::spotify::Uri;
 pub use playable::Playable;
 
 pub struct Player {
@@ -86,6 +87,17 @@ impl Player {
 
         match uri.category.as_str() {
             "track" => Ok(Playable::Track(self.client.get_track(&uri.id).await?)),
+            "playlist" if uri.mystery => {
+                let playable = Playable::Playlist(self.client.get_playlist(&uri.id).await?);
+                let mut tracks = playable.uris();
+
+                tracks.shuffle(&mut rand::thread_rng());
+
+                let track = tracks.first().ok_or_else(|| anyhow!("No tracks in playlist"))?;
+                let track_uri: Uri = track.parse()?;
+
+                Ok(Playable::Track(self.client.get_track(&track_uri.id).await?))
+            }
             "playlist" => Ok(Playable::Playlist(self.client.get_playlist(&uri.id).await?)),
             "album" => Ok(Playable::Album(self.client.get_album(&uri.id).await?)),
             _ => Err(anyhow!("Unsupported URI category")),

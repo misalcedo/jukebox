@@ -1,9 +1,6 @@
-use oauth2::basic::{BasicClient, BasicTokenResponse};
-use oauth2::reqwest::http_client;
-use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope,
-    TokenResponse, TokenUrl,
-};
+use oauth2::basic::{BasicClient, BasicTokenResponse, BasicTokenType};
+use oauth2::reqwest::async_http_client;
+use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, EmptyExtraTokenFields, PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl};
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -31,16 +28,8 @@ impl Client {
         let client = BasicClient::new(client_id, None, auth_url, Some(token_url))
             .set_redirect_uri(redirect_url);
 
-        let mut deadline = Instant::now();
-        let token = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|token| serde_json::from_str(&token).ok())
-            .unwrap_or_else(|| {
-                let token = authorize(&client).expect("Failed to authorize the client");
-                deadline += token.expires_in().unwrap_or_default();
-                save(&path, &token).expect("Failed to save the token");
-                token
-            });
+        let deadline = Instant::now();
+        let token = BasicTokenResponse::new(AccessToken::new(String::default()), BasicTokenType::Bearer, EmptyExtraTokenFields {});
 
         Self {
             client,
@@ -50,27 +39,48 @@ impl Client {
         }
     }
 
-    fn refresh(&mut self) {
-        if self.deadline < Instant::now() {
-            self.token = refresh(&self.client, &self.token).expect("Failed to refresh the token");
-            self.deadline = Instant::now() + self.token.expires_in().unwrap_or_default();
-            save(&self.path, &self.token).expect("Failed to save the token");
-        }
-    }
-
-    pub fn authorization(&mut self) -> String {
-        self.refresh();
+    pub async fn authorization(&mut self) -> anyhow::Result<String> {
+        self.refresh().await?;
 
         let secret = self.token.access_token().secret();
 
         match self.token.token_type().as_ref() {
-            "bearer" => format!("Bearer {secret}"),
-            token_type => format!("{token_type} {secret}"),
+            "bearer" => Ok(format!("Bearer {secret}")),
+            token_type => Ok(format!("{token_type} {secret}")),
         }
+    }
+
+    async fn refresh(&mut self) -> anyhow::Result<()> {
+        let now = Instant::now();
+
+        if self.token.access_token().secret().is_empty() {
+            match load(&self.path).await {
+                Ok(token) => {
+                    self.token = token;
+                    self.deadline = now;
+                }
+                Err(_) => {
+                    let token = authorize(&self.client).await?;
+
+                    save(&self.path, &token).await?;
+
+                    self.token = token;
+                    self.deadline = now + self.token.expires_in().unwrap_or_default();
+                }
+            };
+        }
+
+        if self.deadline <= now {
+            self.token = refresh(&self.client, &self.token).await?;
+            self.deadline = now + self.token.expires_in().unwrap_or_default();
+            save(&self.path, &self.token).await?;
+        }
+
+        Ok(())
     }
 }
 
-pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
+async fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
     // Create a Proof Key of Code Exchange code verifier and SHA-256 encode it as a code challenge.
     let (code_challenge, code_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -126,23 +136,28 @@ pub fn authorize(client: &BasicClient) -> anyhow::Result<BasicTokenResponse> {
     let token = client
         .exchange_code(code)
         .set_pkce_verifier(code_verifier)
-        .request(http_client)?;
+        .request_async(async_http_client)
+        .await?;
 
     Ok(token)
 }
 
-pub fn save(path: impl AsRef<Path>, token: &BasicTokenResponse) -> anyhow::Result<()> {
+async fn save(path: impl AsRef<Path>, token: &BasicTokenResponse) -> anyhow::Result<()> {
     let token = serde_json::to_string(&token)?;
-
-    std::fs::write(path, token)?;
-
+    tokio::fs::write(path, token).await?;
     Ok(())
 }
 
-fn refresh(client: &BasicClient, token: &BasicTokenResponse) -> anyhow::Result<BasicTokenResponse> {
+async fn load(path: impl AsRef<Path>) -> anyhow::Result<BasicTokenResponse> {
+    let contents = tokio::fs::read_to_string(path).await?;
+    let token = serde_json::from_str(&contents)?;
+    Ok(token)
+}
+
+async fn refresh(client: &BasicClient, token: &BasicTokenResponse) -> anyhow::Result<BasicTokenResponse> {
     let token = client
         .exchange_refresh_token(token.refresh_token().expect("Missing refresh token"))
-        .request(http_client)?;
-
+        .request_async(async_http_client)
+        .await?;
     Ok(token)
 }
