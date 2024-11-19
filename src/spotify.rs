@@ -1,4 +1,4 @@
-use crate::spotify::models::{Album, DeviceList, PlaybackState, Playlist, StartPlaybackRequest, Track};
+use crate::spotify::models::{Album, DeviceList, Playlist, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
 use std::error::Error;
@@ -76,13 +76,13 @@ impl FromStr for Uri {
 
 pub struct Client {
     oauth: token::Client,
-    http: reqwest::blocking::Client,
+    http: reqwest::Client,
     market: String,
 }
 
 impl Client {
     pub fn new(oauth: token::Client, market: String) -> Client {
-        let http = reqwest::blocking::Client::new();
+        let http = reqwest::Client::new();
         Client {
             oauth,
             http,
@@ -90,82 +90,107 @@ impl Client {
         }
     }
 
-    pub fn get_available_devices(&mut self) -> Result<DeviceList> {
+    pub async fn get_available_devices(&mut self) -> Result<DeviceList> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
         self.http
             .get("https://api.spotify.com/v1/me/player/devices")
-            .header("Authorization", self.oauth.authorization())
-            .send()?
+            .header("Authorization", token)
+            .send()
+            .await?
             .error_for_status()?
             .json()
+            .await
     }
 
-    pub fn play(&mut self, device_id: Option<String>, request: &StartPlaybackRequest) -> Result<()> {
+    pub async fn play(
+        &mut self,
+        device_id: Option<String>,
+        request: &StartPlaybackRequest,
+    ) -> Result<()> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
         self.http
             .put("https://api.spotify.com/v1/me/player/play")
             .query(&[("device_id", device_id)])
-            .header("Authorization", self.oauth.authorization())
+            .header("Authorization", token)
             .json(request)
-            .send()?
+            .send()
+            .await?
             .error_for_status()?;
 
         Ok(())
     }
 
-    pub fn pause(&mut self, device_id: Option<String>) -> Result<()> {
+    pub async fn pause(&mut self, device_id: Option<String>) -> Result<()> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
         self.http
             .put("https://api.spotify.com/v1/me/player/pause")
             .query(&[("device_id", device_id)])
-            .header("Authorization", self.oauth.authorization())
-            .body("")
-            .send()?
+            .header("Authorization", token)
+            .header("Content-Length", 0)
+            .send()
+            .await?
             .error_for_status()?;
 
         Ok(())
     }
 
-    pub fn get_playback_state(&mut self) -> Result<Option<PlaybackState>> {
-        let response = self.http
-            .get("https://api.spotify.com/v1/me/player")
-            .query(&[("market", self.market.as_str())])
-            .header("Authorization", self.oauth.authorization())
-            .body("")
-            .send()?
+    pub async fn skip_to_next(&mut self, device_id: Option<String>) -> Result<()> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
+        self.http
+            .post("https://api.spotify.com/v1/me/player/next")
+            .query(&[("device_id", device_id)])
+            .header("Authorization", token)
+            .header("Content-Length", 0)
+            .send()
+            .await?
             .error_for_status()?;
 
-        if response.content_length().unwrap_or_default() == 0 {
-            return Ok(None);
-        }
-
-        response.json()
+        Ok(())
     }
 
-    pub fn get_track(&mut self, id: &str) -> Result<Track> {
+    pub async fn get_track(&mut self, id: &str) -> Result<Track> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
         self.http
             .get(format!("https://api.spotify.com/v1/tracks/{}", id))
             .query(&[("market", self.market.as_str())])
-            .header("Authorization", self.oauth.authorization())
-            .send()?
+            .header("Authorization", token)
+            .send()
+            .await?
             .error_for_status()?
             .json()
+            .await
     }
 
-    pub fn get_album(&mut self, id: &str) -> Result<Album> {
+    pub async fn get_album(&mut self, id: &str) -> Result<Album> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
         self.http
             .get(format!("https://api.spotify.com/v1/albums/{}", id))
             .query(&[("market", self.market.as_str())])
-            .header("Authorization", self.oauth.authorization())
-            .send()?
+            .header("Authorization", token)
+            .send()
+            .await?
             .error_for_status()?
             .json()
+            .await
     }
 
-    pub fn get_playlist(&mut self, id: &str) -> Result<Playlist> {
+    pub async fn get_playlist(&mut self, id: &str) -> Result<Playlist> {
+        let token = self.oauth.authorization().await.unwrap_or_default();
+
         self.http
             .get(format!("https://api.spotify.com/v1/playlists/{}", id))
             .query(&[("market", self.market.as_str())])
-            .header("Authorization", self.oauth.authorization())
-            .send()?
+            .header("Authorization", token)
+            .send()
+            .await?
             .error_for_status()?
             .json()
+            .await
     }
 }

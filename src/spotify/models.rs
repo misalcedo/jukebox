@@ -146,6 +146,7 @@ pub struct AlbumTrackItem {
     pub artists: Vec<Artist>,
     pub name: String,
     pub uri: String,
+    pub duration_ms: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
@@ -183,6 +184,7 @@ pub struct Track {
     pub artists: Vec<Artist>,
     pub name: String,
     pub uri: String,
+    pub duration_ms: u64,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
