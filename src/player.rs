@@ -49,12 +49,10 @@ impl Player {
             return Err(anyhow!("No songs to play"));
         }
 
-        if self.last.as_deref() == Some(playable.uri()) {
-            if self.tracker.has_next() {
-                self.client.skip_to_next(None).await?;
-                self.tracker.start();
-                return Ok(());
-            }
+        if self.last.as_deref() == Some(playable.uri()) && self.tracker.has_next() {
+            self.client.skip_to_next(None).await?;
+            self.tracker.start();
+            return Ok(());
         }
 
         songs.shuffle(&mut rand::thread_rng());
