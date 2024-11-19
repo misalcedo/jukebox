@@ -3,10 +3,10 @@ use anyhow::anyhow;
 use rand::prelude::SliceRandom;
 
 mod playable;
-mod time;
+mod progress;
 
 use crate::cli::Arguments;
-use crate::player::time::StopWatch;
+use crate::player::progress::SongTracker;
 use crate::spotify::models::StartPlaybackRequest;
 use crate::spotify::Uri;
 pub use playable::Playable;
@@ -16,7 +16,7 @@ pub struct Player {
     preferred_device: Option<String>,
     device_id: String,
     last: Option<String>,
-    stop_watch: StopWatch,
+    tracker: SongTracker,
 }
 
 impl TryFrom<Arguments> for Player {
@@ -31,7 +31,7 @@ impl TryFrom<Arguments> for Player {
             preferred_device: arguments.device,
             device_id: String::default(),
             last: None,
-            stop_watch: StopWatch::default(),
+            tracker: SongTracker::default(),
         })
     }
 }
@@ -43,31 +43,28 @@ impl Player {
         }
 
         let playable = self.resolve_uri(&uri).await?;
-        let songs = playable.songs();
+        let mut songs = playable.songs();
 
         if songs.is_empty() {
             return Err(anyhow!("No songs to play"));
         }
 
         if self.last.as_deref() == Some(playable.uri()) {
-            let cutoff = songs.iter().map(|song| song.duration).sum();
-
-            if self.stop_watch.elapsed() < cutoff || self.stop_watch.laps() < songs.len() {
+            if self.tracker.has_next() {
                 self.client.skip_to_next(None).await?;
-                self.stop_watch.start();
+                self.tracker.start();
                 return Ok(());
             }
         }
 
-        let mut uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
+        songs.shuffle(&mut rand::thread_rng());
 
-        uris.shuffle(&mut rand::thread_rng());
-
+        let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
         let request = StartPlaybackRequest::from(uris);
 
         self.client.play(Some(self.device_id.clone()), &request).await?;
         self.last = Some(playable.uri().to_string());
-        self.stop_watch.reset();
+        self.tracker.reset(songs);
 
         Ok(())
     }
@@ -82,7 +79,7 @@ impl Player {
             return Err(anyhow::anyhow!(e));
         };
 
-        self.stop_watch.pause();
+        self.tracker.pause();
 
         Ok(())
     }
