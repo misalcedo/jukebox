@@ -1,6 +1,9 @@
 use oauth2::basic::{BasicClient, BasicTokenResponse, BasicTokenType};
 use oauth2::reqwest::async_http_client;
-use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, EmptyExtraTokenFields, PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl};
+use oauth2::{
+    AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, EmptyExtraTokenFields,
+    PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl,
+};
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -29,7 +32,11 @@ impl Client {
             .set_redirect_uri(redirect_url);
 
         let deadline = Instant::now();
-        let token = BasicTokenResponse::new(AccessToken::new(String::default()), BasicTokenType::Bearer, EmptyExtraTokenFields {});
+        let token = BasicTokenResponse::new(
+            AccessToken::new(String::default()),
+            BasicTokenType::Bearer,
+            EmptyExtraTokenFields {},
+        );
 
         Self {
             client,
@@ -154,7 +161,10 @@ async fn load(path: impl AsRef<Path>) -> anyhow::Result<BasicTokenResponse> {
     Ok(token)
 }
 
-async fn refresh(client: &BasicClient, token: &BasicTokenResponse) -> anyhow::Result<BasicTokenResponse> {
+async fn refresh(
+    client: &BasicClient,
+    token: &BasicTokenResponse,
+) -> anyhow::Result<BasicTokenResponse> {
     let token = client
         .exchange_refresh_token(token.refresh_token().expect("Missing refresh token"))
         .request_async(async_http_client)

@@ -1,6 +1,4 @@
-use crate::spotify::models::{
-    Album, DeviceList, Playlist, StartPlaybackRequest, Track,
-};
+use crate::spotify::models::{Album, DeviceList, Playlist, StartPlaybackRequest, Track};
 use crate::token;
 use reqwest::Result;
 use std::error::Error;

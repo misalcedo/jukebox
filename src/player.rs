@@ -62,7 +62,9 @@ impl Player {
         let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
         let request = StartPlaybackRequest::from(uris);
 
-        self.client.play(Some(self.device_id.clone()), &request).await?;
+        self.client
+            .play(Some(self.device_id.clone()), &request)
+            .await?;
         self.last = Some(playable.uri().to_string());
         self.tracker.reset(songs);
 

@@ -24,10 +24,12 @@ impl PlayerState {
     }
 }
 
-pub async fn run(sender: Sender<Option<String>>, receiver: Receiver<Option<String>>) -> anyhow::Result<()> {
+pub async fn run(
+    sender: Sender<Option<String>>,
+    receiver: Receiver<Option<String>>,
+) -> anyhow::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:5853").await?;
-    let serve_dir = ServeDir::new("public")
-        .not_found_service(ServeFile::new("public/404.html"));
+    let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/404.html"));
     let app = axum::Router::new()
         .route("/play", post(play).put(play))
         .fallback_service(serve_dir)
@@ -38,10 +40,7 @@ pub async fn run(sender: Sender<Option<String>>, receiver: Receiver<Option<Strin
     Ok(())
 }
 
-async fn play(
-    State(state): State<PlayerState>,
-    Form(input): Form<Input>,
-) -> impl IntoResponse {
+async fn play(State(state): State<PlayerState>, Form(input): Form<Input>) -> impl IntoResponse {
     let value = Some(input.uri).filter(|v| !v.is_empty());
 
     if let Err(e) = state.sender.send(value) {
