@@ -30,8 +30,17 @@ struct PlayerState {
 }
 
 impl PlayerState {
-    fn new(sender: Sender<Option<String>>, _receiver: Receiver<Option<String>>, oauth: Client) -> Self {
-        Self { sender, _receiver, oauth, code_verifier: Arc::new(Mutex::new(None)) }
+    fn new(
+        sender: Sender<Option<String>>,
+        _receiver: Receiver<Option<String>>,
+        oauth: Client,
+    ) -> Self {
+        Self {
+            sender,
+            _receiver,
+            oauth,
+            code_verifier: Arc::new(Mutex::new(None)),
+        }
     }
 }
 
@@ -80,13 +89,21 @@ async fn login(Host(host): Host, State(state): State<PlayerState>) -> impl IntoR
     }
 }
 
-async fn callback(Query(params): Query<CallbackParameters>, Host(host): Host, State(state): State<PlayerState>) -> impl IntoResponse {
+async fn callback(
+    Query(params): Query<CallbackParameters>,
+    Host(host): Host,
+    State(state): State<PlayerState>,
+) -> impl IntoResponse {
     let mut guard = state.code_verifier.lock().await;
 
     match guard.take() {
         Some(code_verifier) => {
             let redirect_url = format!("http://{host}/callback");
-            if let Err(e) = state.oauth.authorize(code_verifier, params.code, redirect_url).await {
+            if let Err(e) = state
+                .oauth
+                .authorize(code_verifier, params.code, redirect_url)
+                .await
+            {
                 tracing::error!(%host, %e, "Failed to authorize");
             }
         }

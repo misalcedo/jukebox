@@ -1,6 +1,9 @@
 use oauth2::basic::{BasicClient, BasicTokenResponse, BasicTokenType};
 use oauth2::reqwest::async_http_client;
-use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl};
+use oauth2::{
+    AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge,
+    PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
+};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
@@ -21,7 +24,10 @@ impl CachedToken {
     fn new(token: BasicTokenResponse, now: SystemTime) -> anyhow::Result<Self> {
         Ok(Self {
             access_token: token.access_token().clone(),
-            refresh_token: token.refresh_token().ok_or_else(|| anyhow::anyhow!("No refresh token"))?.clone(),
+            refresh_token: token
+                .refresh_token()
+                .ok_or_else(|| anyhow::anyhow!("No refresh token"))?
+                .clone(),
             token_type: token.token_type().clone(),
             deadline: now + token.expires_in().unwrap_or_default(),
         })
@@ -59,7 +65,10 @@ impl Client {
 
         match token.token_type {
             BasicTokenType::Bearer => Ok(format!("Bearer {secret}")),
-            token_type => Err(anyhow::anyhow!("Unsupported token type: {}", token_type.as_ref())),
+            token_type => Err(anyhow::anyhow!(
+                "Unsupported token type: {}",
+                token_type.as_ref()
+            )),
         }
     }
 
@@ -69,11 +78,12 @@ impl Client {
 
         let token = match guard.as_ref() {
             Some(token) => token.clone(),
-            None => load(&self.path).await?
+            None => load(&self.path).await?,
         };
 
         if token.deadline <= now {
-            let response = self.client
+            let response = self
+                .client
                 .exchange_refresh_token(&token.refresh_token)
                 .request_async(async_http_client)
                 .await?;
@@ -92,7 +102,8 @@ impl Client {
         let redirect_url = RedirectUrl::new(redirect_url)?;
 
         // Generate the authorization URL to which we'll redirect the user.
-        let (authorize_url, _) = self.client
+        let (authorize_url, _) = self
+            .client
             .authorize_url(CsrfToken::new_random)
             .add_scope(Scope::new("user-read-private".to_string()))
             .add_scope(Scope::new("user-read-email".to_string()))
@@ -108,10 +119,16 @@ impl Client {
         Ok((authorize_url, code_verifier))
     }
 
-    pub async fn authorize(&self, code_verifier: PkceCodeVerifier, code: String, redirect_url: String) -> anyhow::Result<()> {
+    pub async fn authorize(
+        &self,
+        code_verifier: PkceCodeVerifier,
+        code: String,
+        redirect_url: String,
+    ) -> anyhow::Result<()> {
         let now = SystemTime::now();
         let code = AuthorizationCode::new(code);
-        let response = self.client
+        let response = self
+            .client
             .exchange_code(code)
             .set_pkce_verifier(code_verifier)
             .set_redirect_uri(Cow::Owned(RedirectUrl::new(redirect_url)?))

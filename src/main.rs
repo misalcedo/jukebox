@@ -54,8 +54,18 @@ fn run(arguments: Arguments) -> anyhow::Result<()> {
         let mut group = tokio::task::JoinSet::new();
         let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
 
-        group.spawn(web::run(sender.clone(), receiver.clone(), oauth.clone(), arguments.address));
-        group.spawn(player::run(receiver, oauth, arguments.market, arguments.device));
+        group.spawn(web::run(
+            sender.clone(),
+            receiver.clone(),
+            oauth.clone(),
+            arguments.address,
+        ));
+        group.spawn(player::run(
+            receiver,
+            oauth,
+            arguments.market,
+            arguments.device,
+        ));
         group.spawn_blocking(|| read_loop(sender));
         group.join_all().await
     });

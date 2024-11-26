@@ -110,7 +110,12 @@ impl Player {
     }
 }
 
-pub async fn run(mut receiver: Receiver<Option<String>>, oauth: token::Client, market: String, preferred_device: Option<String>) -> anyhow::Result<()> {
+pub async fn run(
+    mut receiver: Receiver<Option<String>>,
+    oauth: token::Client,
+    market: String,
+    preferred_device: Option<String>,
+) -> anyhow::Result<()> {
     let mut player = Player::new(oauth, market, preferred_device);
 
     loop {
