@@ -7,9 +7,8 @@ mod web;
 
 use crate::card::Reader;
 use crate::cli::Arguments;
-use crate::player::Player;
 use clap::Parser;
-use tokio::sync::watch::{Receiver, Sender};
+use tokio::sync::watch::Sender;
 use tracing_log::LogTracer;
 
 fn main() {
@@ -53,9 +52,10 @@ fn run(arguments: Arguments) -> anyhow::Result<()> {
         let (sender, receiver) = tokio::sync::watch::channel(None);
 
         let mut group = tokio::task::JoinSet::new();
+        let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
 
-        group.spawn(web::run(sender.clone(), receiver.clone()));
-        group.spawn(player_loop(arguments, receiver.clone()));
+        group.spawn(web::run(sender.clone(), receiver.clone(), oauth.clone(), arguments.address));
+        group.spawn(player::run(receiver, oauth, arguments.market, arguments.device));
         group.spawn_blocking(|| read_loop(sender));
         group.join_all().await
     });
@@ -84,31 +84,5 @@ fn read_loop(sender: Sender<Option<String>>) -> anyhow::Result<()> {
                 sender.send(None)?;
             }
         }
-    }
-}
-
-async fn player_loop(
-    arguments: Arguments,
-    mut receiver: Receiver<Option<String>>,
-) -> anyhow::Result<()> {
-    let mut player = Player::try_from(arguments)?;
-
-    loop {
-        receiver.changed().await?;
-
-        let value = receiver.borrow_and_update().clone();
-
-        match value {
-            Some(uri) => {
-                if let Err(e) = player.play(uri).await {
-                    tracing::error!(%e, "Failed to start playback");
-                }
-            }
-            None => {
-                if let Err(e) = player.pause().await {
-                    tracing::error!(%e, "Failed to pause playback");
-                }
-            }
-        };
     }
 }

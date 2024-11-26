@@ -18,4 +18,7 @@ pub struct Arguments {
 
     #[arg(short, long, env = "JUKEBOX_DEVICE")]
     pub device: Option<String>,
+
+    #[arg(short, long, env = "JUKEBOX_ADDRESS")]
+    pub address: String,
 }

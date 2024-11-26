@@ -1,11 +1,11 @@
 use crate::{spotify, token};
 use anyhow::anyhow;
 use rand::prelude::SliceRandom;
+use tokio::sync::watch::Receiver;
 
 mod playable;
 mod progress;
 
-use crate::cli::Arguments;
 use crate::player::progress::SongTracker;
 use crate::spotify::models::StartPlaybackRequest;
 use crate::spotify::Uri;
@@ -19,24 +19,19 @@ pub struct Player {
     tracker: SongTracker,
 }
 
-impl TryFrom<Arguments> for Player {
-    type Error = anyhow::Error;
+impl Player {
+    fn new(oauth: token::Client, market: String, preferred_device: Option<String>) -> Self {
+        let client = spotify::Client::new(oauth, market);
 
-    fn try_from(arguments: Arguments) -> Result<Self, Self::Error> {
-        let oauth = token::Client::new(arguments.client_id.clone(), arguments.token_cache.clone());
-        let client = spotify::Client::new(oauth, arguments.market.clone());
-
-        Ok(Self {
+        Self {
             client,
-            preferred_device: arguments.device,
+            preferred_device,
             device_id: String::default(),
             last: None,
             tracker: SongTracker::default(),
-        })
+        }
     }
-}
 
-impl Player {
     pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
         if self.device_id.is_empty() {
             self.device_id = self.preferred_device().await?;
@@ -112,5 +107,28 @@ impl Player {
             )),
             Some(device) => Ok(device.id),
         }
+    }
+}
+
+pub async fn run(mut receiver: Receiver<Option<String>>, oauth: token::Client, market: String, preferred_device: Option<String>) -> anyhow::Result<()> {
+    let mut player = Player::new(oauth, market, preferred_device);
+
+    loop {
+        receiver.changed().await?;
+
+        let value = receiver.borrow_and_update().clone();
+
+        match value {
+            Some(uri) => {
+                if let Err(e) = player.play(uri).await {
+                    tracing::error!(%e, "Failed to start playback");
+                }
+            }
+            None => {
+                if let Err(e) = player.pause().await {
+                    tracing::error!(%e, "Failed to pause playback");
+                }
+            }
+        };
     }
 }
