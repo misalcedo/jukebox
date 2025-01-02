@@ -1,29 +1,29 @@
 mod card;
 mod cli;
+mod console;
 mod player;
 mod spotify;
 mod token;
 mod web;
 
+use std::io;
 use crate::card::Reader;
 use crate::cli::Arguments;
 use clap::Parser;
 use tokio::sync::watch::Sender;
 use tracing_log::LogTracer;
+use crate::console::Screen;
 
 fn main() {
     let arguments = cli::Arguments::parse();
+    let screen = set_log_level(&arguments).expect("Failed to configure logging");
 
-    if let Err(e) = set_log_level(&arguments) {
-        eprintln!("Failed to configure logging: {e}");
-    };
-
-    if let Err(e) = run(arguments) {
+    if let Err(e) = run(arguments, screen) {
         tracing::error!(%e, "Unable to run the jukebox");
     }
 }
 
-fn set_log_level(arguments: &Arguments) -> anyhow::Result<()> {
+fn set_log_level(arguments: &Arguments) -> anyhow::Result<console::Screen> {
     LogTracer::init()?;
 
     let level = match arguments.verbosity {
@@ -34,19 +34,21 @@ fn set_log_level(arguments: &Arguments) -> anyhow::Result<()> {
         _ => tracing::Level::TRACE,
     };
 
+    let screen = Screen::default();
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(level)
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
+        .with_writer(tracing_subscriber::fmt::writer::Tee::new(io::stdout, screen.clone()))
         .finish();
 
     tracing::subscriber::set_global_default(subscriber)?;
 
-    Ok(())
+    Ok(screen)
 }
 
-fn run(arguments: Arguments) -> anyhow::Result<()> {
+fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
     let runtime = tokio::runtime::Runtime::new()?;
     let results = runtime.block_on(async {
         let (sender, receiver) = tokio::sync::watch::channel(None);
@@ -59,6 +61,7 @@ fn run(arguments: Arguments) -> anyhow::Result<()> {
             receiver.clone(),
             oauth.clone(),
             arguments.address,
+            screen
         ));
         group.spawn(player::run(
             receiver,

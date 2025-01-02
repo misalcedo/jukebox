@@ -10,6 +10,7 @@ use tokio::net::TcpListener;
 use tokio::sync::watch::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tower_http::services::{ServeDir, ServeFile};
+use crate::console::Screen;
 
 #[derive(Deserialize)]
 struct Input {
@@ -26,6 +27,7 @@ struct PlayerState {
     sender: Sender<Option<String>>,
     _receiver: Receiver<Option<String>>,
     oauth: Client,
+    screen: Screen,
     code_verifier: Arc<Mutex<Option<PkceCodeVerifier>>>,
 }
 
@@ -34,11 +36,13 @@ impl PlayerState {
         sender: Sender<Option<String>>,
         _receiver: Receiver<Option<String>>,
         oauth: Client,
+        screen: Screen,
     ) -> Self {
         Self {
             sender,
             _receiver,
             oauth,
+            screen,
             code_verifier: Arc::new(Mutex::new(None)),
         }
     }
@@ -49,20 +53,28 @@ pub async fn run(
     receiver: Receiver<Option<String>>,
     oauth: Client,
     address: String,
+    screen: Screen,
 ) -> anyhow::Result<()> {
     let listener = TcpListener::bind(address).await?;
     let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/404.html"));
     let app = axum::Router::new()
+        .route("/logs", get(logs))
         .route("/play", post(play).put(play))
         .route("/login", get(login))
         .route("/callback", get(callback))
         .fallback_service(serve_dir)
-        .with_state(PlayerState::new(sender, receiver, oauth));
+        .with_state(PlayerState::new(sender, receiver, oauth, screen));
 
     serve(listener, app).await?;
 
     Ok(())
 }
+
+async fn logs(State(state): State<PlayerState>) -> String {
+    tracing::info!("logs");
+    state.screen.read().join("")
+}
+
 
 async fn play(State(state): State<PlayerState>, Form(input): Form<Input>) -> impl IntoResponse {
     let value = Some(input.uri).filter(|v| !v.is_empty());
