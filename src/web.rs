@@ -1,6 +1,6 @@
 use crate::token::Client;
 use axum::extract::{Form, Host, Query, State};
-use axum::response::{IntoResponse, Redirect};
+use axum::response::{Html, IntoResponse, Redirect};
 use axum::routing::{get, post};
 use axum::serve;
 use oauth2::PkceCodeVerifier;
@@ -70,9 +70,8 @@ pub async fn run(
     Ok(())
 }
 
-async fn logs(State(state): State<PlayerState>) -> String {
-    tracing::info!("logs");
-    state.screen.read().join("")
+async fn logs(State(state): State<PlayerState>) -> Html<String> {
+    Html(state.screen.read().join("<br>"))
 }
 
 

@@ -39,8 +39,10 @@ impl std::io::Write for Screen {
             guard.pop_front();
         }
 
-        guard.push_back(String::from(text));
+        let html = ansi_to_html::convert(text)
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid ansi text"))?;
 
+        guard.push_back(html);
         Ok(buf.len())
     }
 
