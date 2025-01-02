@@ -71,7 +71,7 @@ pub async fn run(
 }
 
 async fn logs(State(state): State<PlayerState>) -> Html<String> {
-    Html(state.screen.read().join("<br>"))
+    Html(state.screen.read())
 }
 
 

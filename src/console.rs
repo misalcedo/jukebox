@@ -15,11 +15,23 @@ impl Default for Screen {
     }
 }
 
+const DELIMITER: &'static str = "<br>";
+
 impl Screen {
-    pub fn read(&self) -> Vec<String> {
+    pub fn read(&self) -> String {
         match self.events.read() {
-            Ok(guard) => guard.iter().cloned().collect(),
-            Err(_) => Vec::new(),
+            Ok(guard) => {
+                let bytes: usize = guard.iter().map(String::len).sum();
+                let mut result = String::with_capacity(bytes + (DELIMITER.len() * guard.len()));
+
+                for s in guard.iter() {
+                    result.push_str(s);
+                    result.push_str(DELIMITER);
+                }
+
+                result
+            },
+            Err(_) => String::new(),
         }
     }
 }
