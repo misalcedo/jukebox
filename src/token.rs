@@ -76,7 +76,7 @@ impl Client {
         let now = SystemTime::now();
         let mut guard = self.token.lock().await;
 
-        let token = match guard.as_ref() {
+        let mut token = match guard.as_ref() {
             Some(token) => token.clone(),
             None => load(&self.path).await?,
         };
@@ -87,8 +87,8 @@ impl Client {
                 .exchange_refresh_token(&token.refresh_token)
                 .request_async(async_http_client)
                 .await?;
-            let token = CachedToken::new(response, now)?;
 
+            token = CachedToken::new(response, now)?;
             *guard = Some(token.clone());
             save(&self.path, &token).await?;
         }
