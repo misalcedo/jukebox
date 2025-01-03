@@ -15,7 +15,7 @@ impl Default for Screen {
     }
 }
 
-const DELIMITER: &'static str = "<br>";
+const DELIMITER: &str = "<br>";
 
 impl Screen {
     pub fn read(&self) -> String {
