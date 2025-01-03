@@ -1,3 +1,4 @@
+use crate::console::Screen;
 use crate::token::Client;
 use axum::extract::{Form, Host, Query, State};
 use axum::response::{Html, IntoResponse, Redirect};
@@ -10,7 +11,6 @@ use tokio::net::TcpListener;
 use tokio::sync::watch::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tower_http::services::{ServeDir, ServeFile};
-use crate::console::Screen;
 
 #[derive(Deserialize)]
 struct Input {
@@ -73,7 +73,6 @@ pub async fn run(
 async fn logs(State(state): State<PlayerState>) -> Html<String> {
     Html(state.screen.read())
 }
-
 
 async fn play(State(state): State<PlayerState>, Form(input): Form<Input>) -> impl IntoResponse {
     let value = Some(input.uri).filter(|v| !v.is_empty());

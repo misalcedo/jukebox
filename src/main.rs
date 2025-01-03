@@ -6,13 +6,13 @@ mod spotify;
 mod token;
 mod web;
 
-use std::io;
 use crate::card::Reader;
 use crate::cli::Arguments;
+use crate::console::Screen;
 use clap::Parser;
+use std::io;
 use tokio::sync::watch::Sender;
 use tracing_log::LogTracer;
-use crate::console::Screen;
 
 fn main() {
     let arguments = cli::Arguments::parse();
@@ -40,7 +40,10 @@ fn set_log_level(arguments: &Arguments) -> anyhow::Result<console::Screen> {
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
-        .with_writer(tracing_subscriber::fmt::writer::Tee::new(io::stdout, screen.clone()))
+        .with_writer(tracing_subscriber::fmt::writer::Tee::new(
+            io::stdout,
+            screen.clone(),
+        ))
         .finish();
 
     tracing::subscriber::set_global_default(subscriber)?;
@@ -61,7 +64,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
             receiver.clone(),
             oauth.clone(),
             arguments.address,
-            screen
+            screen,
         ));
         group.spawn(player::run(
             receiver,
