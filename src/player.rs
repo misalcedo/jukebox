@@ -46,9 +46,17 @@ impl Player {
         }
 
         if self.last.as_deref() == Some(playable.uri()) && self.tracker.has_next() {
-            self.client.skip_to_next(None).await?;
-            self.tracker.start();
-            return Ok(());
+            match self.client.skip_to_next(None).await? {
+                Ok(_) => {
+                    self.tracker.start();
+                    return Ok(());
+                }
+                Err(e) if not_supported(e.status()) => {
+                    tracing::warn!(%e, "Failed to skip song, shuffling instead");
+                    // fall through to still play the song instead of skipping
+                }
+                Err(e) => return Err(anyhow::anyhow!(e))
+            }
         }
 
         songs.shuffle(&mut rand::thread_rng());
@@ -68,7 +76,7 @@ impl Player {
     pub async fn pause(&mut self) -> anyhow::Result<()> {
         if let Err(e) = self.client.pause(None).await {
             // Song may not be playing.
-            if e.status() == Some(StatusCode::FORBIDDEN) || e.status() == Some(StatusCode::NOT_FOUND) {
+            if not_supported(e.status()) {
                 return Ok(());
             }
 
@@ -137,4 +145,8 @@ pub async fn run(
             }
         };
     }
+}
+
+fn not_supported(status: Option<StatusCode>) -> bool {
+    status == Some(StatusCode::NOT_FOUND) || status == Some(StatusCode::FORBIDDEN)
 }
