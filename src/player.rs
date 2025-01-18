@@ -1,6 +1,7 @@
 use crate::{spotify, token};
 use anyhow::anyhow;
 use rand::prelude::SliceRandom;
+use reqwest::StatusCode;
 use tokio::sync::watch::Receiver;
 
 mod playable;
@@ -67,7 +68,7 @@ impl Player {
     pub async fn pause(&mut self) -> anyhow::Result<()> {
         if let Err(e) = self.client.pause(None).await {
             // Song may not be playing.
-            if e.status() == Some(reqwest::StatusCode::FORBIDDEN) {
+            if e.status() == Some(StatusCode::FORBIDDEN) || e.status() == Some(StatusCode::NOT_FOUND) {
                 return Ok(());
             }
 
