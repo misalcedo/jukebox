@@ -46,7 +46,7 @@ impl Player {
         }
 
         if self.last.as_deref() == Some(playable.uri()) && self.tracker.has_next() {
-            match self.client.skip_to_next(None).await? {
+            match self.client.skip_to_next(None).await {
                 Ok(_) => {
                     self.tracker.start();
                     return Ok(());
@@ -55,7 +55,7 @@ impl Player {
                     tracing::warn!(%e, "Failed to skip song, shuffling instead");
                     // fall through to still play the song instead of skipping
                 }
-                Err(e) => return Err(anyhow::anyhow!(e))
+                Err(e) => return Err(anyhow::anyhow!(e)),
             }
         }
 
