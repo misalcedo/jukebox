@@ -15,7 +15,7 @@ pub use playable::Playable;
 pub struct Player {
     client: spotify::Client,
     preferred_device: Option<String>,
-    device_id: String,
+    device_id: Option<String>,
     last: Option<String>,
     tracker: SongTracker,
 }
@@ -25,15 +25,16 @@ impl Player {
         Self {
             client,
             preferred_device,
-            device_id: String::default(),
+            device_id: None,
             last: None,
             tracker: SongTracker::default(),
         }
     }
 
     pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
-        if self.device_id.is_empty() {
-            self.device_id = self.preferred_device().await?;
+        if self.preferred_device.is_some() && self.device_id.is_none() {
+            let preferred_device_name = self.preferred_device.clone().unwrap_or_default();
+            self.device_id = Some(self.preferred_device_id(preferred_device_name).await?);
         }
 
         let playable = self.resolve_uri(&uri).await?;
@@ -63,7 +64,7 @@ impl Player {
         let request = StartPlaybackRequest::from(uris);
 
         self.client
-            .play(Some(self.device_id.clone()), &request)
+            .play(self.device_id.clone(), &request)
             .await?;
         self.last = Some(playable.uri().to_string());
         self.tracker.reset(songs);
@@ -97,25 +98,15 @@ impl Player {
         }
     }
 
-    async fn preferred_device(&mut self) -> anyhow::Result<String> {
-        let devices = self
+    async fn preferred_device_id(&mut self, preferred_device: String) -> anyhow::Result<String> {
+        match self
             .client
             .get_available_devices()
             .await?
-            .devices;
-
-        tracing::debug!(?devices, "Found preferred devices");
-
-        match devices
+            .devices
             .into_iter()
-            .find(|device| match self.preferred_device.as_deref() {
-                Some(name) => device.name == name,
-                None => true,
-            }) {
-            None => Err(anyhow!(
-                "Found no matching device for {:?}",
-                self.preferred_device.as_deref()
-            )),
+            .find(|device| device.name == preferred_device) {
+            None => Err(anyhow!("Found no matching device for {:?}", preferred_device)),
             Some(device) => Ok(device.id),
         }
     }

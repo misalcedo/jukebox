@@ -84,6 +84,7 @@ pub struct Client {
 impl Client {
     pub fn new(oauth: token::Client, market: String) -> Client {
         let http = reqwest::Client::new();
+
         Client {
             oauth,
             http,
@@ -113,7 +114,7 @@ impl Client {
 
         self.http
             .put("https://api.spotify.com/v1/me/player/play")
-            .query(&[("device_id", device_id)])
+            .query(&device_id.map(|id| [("device_id", id)]))
             .header("Authorization", token)
             .json(request)
             .send()
@@ -128,7 +129,7 @@ impl Client {
 
         self.http
             .put("https://api.spotify.com/v1/me/player/pause")
-            .query(&[("device_id", device_id)])
+            .query(&device_id.map(|id| [("device_id", id)]))
             .header("Authorization", token)
             .header("Content-Length", 0)
             .send()
@@ -143,7 +144,7 @@ impl Client {
 
         self.http
             .post("https://api.spotify.com/v1/me/player/next")
-            .query(&[("device_id", device_id)])
+            .query(&device_id.map(|id| [("device_id", id)]))
             .header("Authorization", token)
             .header("Content-Length", 0)
             .send()
