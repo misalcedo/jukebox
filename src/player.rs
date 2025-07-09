@@ -100,11 +100,15 @@ impl Player {
     }
 
     async fn preferred_device(&mut self) -> anyhow::Result<String> {
-        match self
+        let devices = self
             .client
             .get_available_devices()
             .await?
-            .devices
+            .devices;
+
+        tracing::debug!(?devices, "Found preferred devices");
+
+        match devices
             .into_iter()
             .find(|device| match self.preferred_device.as_deref() {
                 Some(name) => device.name == name,
