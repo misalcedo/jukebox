@@ -74,6 +74,7 @@ impl FromStr for Uri {
     }
 }
 
+#[derive(Clone)]
 pub struct Client {
     oauth: token::Client,
     http: reqwest::Client,

@@ -65,6 +65,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
             oauth.clone(),
             arguments.address,
             screen,
+            arguments.market.clone()
         ));
         group.spawn(player::run(
             receiver,

@@ -1,9 +1,9 @@
 use crate::console::Screen;
 use crate::token::Client;
 use axum::extract::{Form, Host, Query, State};
-use axum::response::{Html, IntoResponse, Redirect};
+use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use axum::serve;
+use axum::{serve, Json};
 use oauth2::PkceCodeVerifier;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -11,6 +11,7 @@ use tokio::net::TcpListener;
 use tokio::sync::watch::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tower_http::services::{ServeDir, ServeFile};
+use crate::spotify;
 
 #[derive(Deserialize)]
 struct Input {
@@ -29,6 +30,7 @@ struct PlayerState {
     oauth: Client,
     screen: Screen,
     code_verifier: Arc<Mutex<Option<PkceCodeVerifier>>>,
+    client: spotify::Client,
 }
 
 impl PlayerState {
@@ -37,12 +39,16 @@ impl PlayerState {
         _receiver: Receiver<Option<String>>,
         oauth: Client,
         screen: Screen,
+        market: String,
     ) -> Self {
+        let client = spotify::Client::new(oauth.clone(), market);
+
         Self {
             sender,
             _receiver,
             oauth,
             screen,
+            client,
             code_verifier: Arc::new(Mutex::new(None)),
         }
     }
@@ -54,6 +60,7 @@ pub async fn run(
     oauth: Client,
     address: String,
     screen: Screen,
+    market: String,
 ) -> anyhow::Result<()> {
     let listener = TcpListener::bind(address).await?;
     let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/404.html"));
@@ -62,8 +69,9 @@ pub async fn run(
         .route("/play", post(play).put(play))
         .route("/login", get(login))
         .route("/callback", get(callback))
+        .route("/devices", get(devices))
         .fallback_service(serve_dir)
-        .with_state(PlayerState::new(sender, receiver, oauth, screen));
+        .with_state(PlayerState::new(sender, receiver, oauth, screen, market));
 
     serve(listener, app).await?;
 
@@ -82,6 +90,18 @@ async fn play(State(state): State<PlayerState>, Form(input): Form<Input>) -> imp
     }
 
     Redirect::to("/")
+}
+
+async fn devices(State(mut state): State<PlayerState>) -> Response {
+    match state
+        .client
+        .get_available_devices()
+        .await {
+        Ok(devices) => {
+            Json(devices).into_response()
+        }
+        Err(e) => Json(tracing::error!(%e, "Failed to get available devices")).into_response(),
+    }
 }
 
 async fn login(Host(host): Host, State(state): State<PlayerState>) -> impl IntoResponse {
