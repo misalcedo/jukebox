@@ -58,6 +58,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
 
         let mut group = tokio::task::JoinSet::new();
         let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
+        let client = spotify::Client::new(oauth.clone(), arguments.market);
 
         group.spawn(web::run(
             sender.clone(),
@@ -65,12 +66,11 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
             oauth.clone(),
             arguments.address,
             screen,
-            arguments.market.clone()
+            client.clone()
         ));
         group.spawn(player::run(
             receiver,
-            oauth,
-            arguments.market,
+            client,
             arguments.device,
         ));
         group.spawn_blocking(|| read_loop(sender));

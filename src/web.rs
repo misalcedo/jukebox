@@ -39,10 +39,8 @@ impl PlayerState {
         _receiver: Receiver<Option<String>>,
         oauth: Client,
         screen: Screen,
-        market: String,
+        client: spotify::Client,
     ) -> Self {
-        let client = spotify::Client::new(oauth.clone(), market);
-
         Self {
             sender,
             _receiver,
@@ -60,7 +58,7 @@ pub async fn run(
     oauth: Client,
     address: String,
     screen: Screen,
-    market: String,
+    client: spotify::Client,
 ) -> anyhow::Result<()> {
     let listener = TcpListener::bind(address).await?;
     let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/404.html"));
@@ -71,7 +69,7 @@ pub async fn run(
         .route("/callback", get(callback))
         .route("/devices", get(devices))
         .fallback_service(serve_dir)
-        .with_state(PlayerState::new(sender, receiver, oauth, screen, market));
+        .with_state(PlayerState::new(sender, receiver, oauth, screen, client));
 
     serve(listener, app).await?;
 

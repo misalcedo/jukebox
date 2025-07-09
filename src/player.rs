@@ -1,4 +1,4 @@
-use crate::{spotify, token};
+use crate::spotify;
 use anyhow::anyhow;
 use rand::prelude::SliceRandom;
 use reqwest::StatusCode;
@@ -21,9 +21,7 @@ pub struct Player {
 }
 
 impl Player {
-    fn new(oauth: token::Client, market: String, preferred_device: Option<String>) -> Self {
-        let client = spotify::Client::new(oauth, market);
-
+    fn new(client: spotify::Client, preferred_device: Option<String>) -> Self {
         Self {
             client,
             preferred_device,
@@ -125,11 +123,10 @@ impl Player {
 
 pub async fn run(
     mut receiver: Receiver<Option<String>>,
-    oauth: token::Client,
-    market: String,
+    client: spotify::Client,
     preferred_device: Option<String>,
 ) -> anyhow::Result<()> {
-    let mut player = Player::new(oauth, market, preferred_device);
+    let mut player = Player::new(client, preferred_device);
 
     loop {
         receiver.changed().await?;
