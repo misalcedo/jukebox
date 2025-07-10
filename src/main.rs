@@ -63,7 +63,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
         group.spawn(web::run(
             sender.clone(),
             receiver.clone(),
-            oauth.clone(),
+            oauth,
             arguments.address,
             screen,
             client.clone()

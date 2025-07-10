@@ -68,6 +68,7 @@ pub async fn run(
         .route("/login", get(login))
         .route("/callback", get(callback))
         .route("/devices", get(devices))
+        .route("/authorization", get(authorization))
         .fallback_service(serve_dir)
         .with_state(PlayerState::new(sender, receiver, oauth, screen, client));
 
@@ -98,7 +99,14 @@ async fn devices(State(mut state): State<PlayerState>) -> Response {
         Ok(devices) => {
             Json(devices).into_response()
         }
-        Err(e) => Json(tracing::error!(%e, "Failed to get available devices")).into_response(),
+        Err(e) => Json(e.to_string()).into_response(),
+    }
+}
+
+async fn authorization(State(mut state): State<PlayerState>) -> Json<String> {
+    match state.oauth.authorization().await {
+        Ok(header) => Json(header),
+        Err(e) => Json(e.to_string()),
     }
 }
 
