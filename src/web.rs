@@ -61,7 +61,7 @@ pub async fn run(
     screen: Screen,
     client: spotify::Client,
 ) -> anyhow::Result<()> {
-    let listener = TcpListener::bind(address).await?;
+    let listener = TcpListener::bind(address.as_str()).await?;
     let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/404.html"));
     let app = axum::Router::new()
         .route("/logs", get(logs))
@@ -72,6 +72,8 @@ pub async fn run(
         .route("/authorization", get(authorization))
         .fallback_service(serve_dir)
         .with_state(PlayerState::new(sender, receiver, oauth, screen, client));
+
+    tracing::debug!(%address, "listening to HTTP requests");
 
     serve(listener, app).await?;
 

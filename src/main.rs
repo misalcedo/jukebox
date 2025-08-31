@@ -18,6 +18,8 @@ fn main() {
     let arguments = cli::Arguments::parse();
     let screen = set_log_level(&arguments).expect("Failed to configure logging");
 
+    tracing::debug!(?arguments, "starting jukebox server");
+
     if let Err(e) = run(arguments, screen) {
         tracing::error!(%e, "Unable to run the jukebox");
     }
@@ -52,7 +54,10 @@ fn set_log_level(arguments: &Arguments) -> anyhow::Result<console::Screen> {
 }
 
 fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
-    let runtime = tokio::runtime::Runtime::new()?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .build()?;
     let results = runtime.block_on(async {
         let (sender, receiver) = tokio::sync::watch::channel(None);
 

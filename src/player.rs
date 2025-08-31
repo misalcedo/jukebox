@@ -124,6 +124,8 @@ pub async fn run(
 
         let value = receiver.borrow_and_update().clone();
 
+        tracing::debug!(?value, "received input");
+
         match value {
             Some(uri) => {
                 if let Err(e) = player.play(uri).await {
