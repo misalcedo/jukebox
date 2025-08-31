@@ -58,7 +58,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
         .enable_io()
         .enable_time()
         .build()?;
-    let results = runtime.block_on(async {
+    let result = runtime.block_on(async {
         let (sender, receiver) = tokio::sync::watch::channel(None);
 
         let mut group = tokio::task::JoinSet::new();
@@ -79,13 +79,18 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
             arguments.device,
         ));
         group.spawn_blocking(|| read_loop(sender));
-        group.join_all().await
+
+        while let Some(join_result) = group.join_next().await {
+            if let Err(result) = join_result? {
+                return Err(result);
+            }
+        }
+
+        return Ok(())
     });
 
-    for result in results {
-        if let Err(e) = result {
-            tracing::error!(%e, "Failed to run the jukebox");
-        }
+    if let Err(e) = result {
+        tracing::error!(%e, "Failed to run the jukebox");
     }
 
     Ok(())
@@ -95,10 +100,13 @@ fn read_loop(sender: Sender<Option<String>>) -> anyhow::Result<()> {
     let ctx = pcsc::Context::establish(pcsc::Scope::User)?;
     let mut reader = Reader::try_from(ctx)?;
 
+    tracing::debug!("Waiting for a card to be inserted");
+
     loop {
         reader.wait(None)?;
         match reader.read() {
             Ok(card) => {
+                tracing::debug!(?card, "Read a card");
                 sender.send(card)?;
             }
             Err(e) => {
