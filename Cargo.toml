@@ -9,7 +9,7 @@ anyhow = { version = "1.0.93" }
 axum = { version = "0.7.7" }
 clap = { version = "4.5.23", features = ["derive", "env"] }
 oauth2 = { version = "4.4.2", features = ["reqwest"] }
-pcsc = { version = "2.8.2" }
+pcsc = { version = "2.9.0" }
 rand = { version = "0.8.5" }
 reqwest = { version = "0.12.9", features = ["json"] }
 serde = { version = "1.0.215", features = ["derive"] }
