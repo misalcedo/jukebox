@@ -1,9 +1,10 @@
 use crate::console::Screen;
 use crate::token::Client;
-use axum::extract::{Form, Host, Query, State};
+use axum::extract::{Form, Query, State};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{serve, Json};
+use axum_extra::extract::Host;
 use oauth2::PkceCodeVerifier;
 use serde::Deserialize;
 use std::sync::Arc;
