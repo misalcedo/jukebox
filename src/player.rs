@@ -58,7 +58,7 @@ impl Player {
             }
         }
 
-        songs.shuffle(&mut rand::thread_rng());
+        songs.shuffle(&mut rand::rng());
 
         let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
         let request = StartPlaybackRequest::from(uris);

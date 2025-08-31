@@ -1,9 +1,5 @@
 use oauth2::basic::{BasicClient, BasicTokenResponse, BasicTokenType};
-use oauth2::reqwest::async_http_client;
-use oauth2::{
-    AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge,
-    PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
-};
+use oauth2::{AccessToken, AuthUrl, AuthorizationCode, ClientId, CsrfToken, EndpointNotSet, EndpointSet, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
@@ -36,7 +32,8 @@ impl CachedToken {
 
 #[derive(Clone)]
 pub struct Client {
-    client: BasicClient,
+    client: BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>,
+    http: reqwest::Client,
     path: PathBuf,
     token: Arc<Mutex<Option<CachedToken>>>,
 }
@@ -50,10 +47,14 @@ impl Client {
         let token_url = TokenUrl::new("https://accounts.spotify.com/api/token".to_string())
             .expect("Invalid token endpoint URL");
 
-        let client = BasicClient::new(client_id, None, auth_url, Some(token_url));
+        let client = BasicClient::new(client_id)
+            .set_auth_uri(auth_url)
+            .set_token_uri(token_url);
+        let http = reqwest::Client::new();
 
         Self {
             client,
+            http,
             path,
             token: Arc::new(Mutex::new(None)),
         }
@@ -85,7 +86,7 @@ impl Client {
             let response = self
                 .client
                 .exchange_refresh_token(&token.refresh_token)
-                .request_async(async_http_client)
+                .request_async(&self.http)
                 .await?;
 
             token = CachedToken::new(response, now)?;
@@ -132,7 +133,7 @@ impl Client {
             .exchange_code(code)
             .set_pkce_verifier(code_verifier)
             .set_redirect_uri(Cow::Owned(RedirectUrl::new(redirect_url)?))
-            .request_async(async_http_client)
+            .request_async(&self.http)
             .await?;
         let token = CachedToken::new(response, now)?;
 
