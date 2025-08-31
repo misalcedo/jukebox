@@ -41,7 +41,7 @@ fn set_log_level(arguments: &Arguments) -> anyhow::Result<console::Screen> {
         .with_line_number(true)
         .with_thread_ids(true)
         .with_writer(tracing_subscriber::fmt::writer::Tee::new(
-            io::stdout,
+            io::stderr,
             screen.clone(),
         ))
         .finish();
