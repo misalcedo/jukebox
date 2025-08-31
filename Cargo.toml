@@ -8,16 +8,16 @@ ansi-to-html = { version = "0.2.2" }
 anyhow = { version = "1.0.99" }
 axum = { version = "0.8.4" }
 axum-extra = { version = "0.10.1" }
-clap = { version = "4.5.23", features = ["derive", "env"] }
-oauth2 = { version = "4.4.2", features = ["reqwest"] }
+clap = { version = "4.5.46", features = ["derive", "env"] }
+oauth2 = { version = "5.0.0", features = ["reqwest"] }
 pcsc = { version = "2.9.0" }
-rand = { version = "0.8.5" }
-reqwest = { version = "0.12.9", features = ["json"] }
+rand = { version = "0.9.2" }
+reqwest = { version = "0.12.23", features = ["json"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.143" }
-tokio = { version = "1.42.0", features = ["full"] }
-tower-http = { version = "0.6.1", features = ["fs", "trace"] }
+tokio = { version = "1.47.1", features = ["full"] }
+tower-http = { version = "0.6.6", features = ["fs", "trace"] }
 tracing = { version = "0.1.41" }
 tracing-log = "0.2.0"
-tracing-subscriber = { version = "0.3.19" }
-url = { version = "2.5.4" }
+tracing-subscriber = { version = "0.3.20" }
+url = { version = "2.5.7" }
