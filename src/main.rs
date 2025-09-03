@@ -58,7 +58,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
         .enable_io()
         .enable_time()
         .build()?;
-    let result = runtime.block_on(async {
+    let result: anyhow::Result<()> = runtime.block_on(async {
         let (sender, receiver) = tokio::sync::watch::channel(None);
 
         let mut group = tokio::task::JoinSet::new();
