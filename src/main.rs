@@ -81,12 +81,10 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
         group.spawn_blocking(|| read_loop(sender));
 
         while let Some(join_result) = group.join_next().await {
-            if let Err(result) = join_result? {
-                return Err(result);
-            }
+            join_result??
         }
 
-        return Ok(())
+        Ok(())
     });
 
     if let Err(e) = result {
