@@ -8,8 +8,8 @@ mod playable;
 mod progress;
 
 use crate::player::progress::SongTracker;
-use crate::spotify::models::StartPlaybackRequest;
 use crate::spotify::Uri;
+use crate::spotify::models::StartPlaybackRequest;
 pub use playable::Playable;
 
 pub struct Player {
@@ -63,9 +63,7 @@ impl Player {
         let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
         let request = StartPlaybackRequest::from(uris);
 
-        self.client
-            .play(self.device_id.clone(), &request)
-            .await?;
+        self.client.play(self.device_id.clone(), &request).await?;
         self.last = Some(playable.uri().to_string());
         self.tracker.reset(songs);
 
@@ -105,8 +103,12 @@ impl Player {
             .await?
             .devices
             .into_iter()
-            .find(|device| device.name == preferred_device) {
-            None => Err(anyhow!("Found no matching device for {:?}", preferred_device)),
+            .find(|device| device.name == preferred_device)
+        {
+            None => Err(anyhow!(
+                "Found no matching device for {:?}",
+                preferred_device
+            )),
             Some(device) => Ok(device.id),
         }
     }

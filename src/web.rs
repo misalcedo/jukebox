@@ -1,18 +1,18 @@
 use crate::console::Screen;
+use crate::spotify;
 use crate::token::Client;
 use axum::extract::{Form, Query, State};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use axum::{serve, Json};
+use axum::{Json, serve};
 use axum_extra::extract::Host;
 use oauth2::PkceCodeVerifier;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::watch::{Receiver, Sender};
 use tokio::sync::Mutex;
+use tokio::sync::watch::{Receiver, Sender};
 use tower_http::services::{ServeDir, ServeFile};
-use crate::spotify;
 
 #[derive(Deserialize)]
 struct Input {
@@ -95,13 +95,8 @@ async fn play(State(state): State<PlayerState>, Form(input): Form<Input>) -> imp
 }
 
 async fn devices(State(mut state): State<PlayerState>) -> Response {
-    match state
-        .client
-        .get_available_devices()
-        .await {
-        Ok(devices) => {
-            Json(devices).into_response()
-        }
+    match state.client.get_available_devices().await {
+        Ok(devices) => Json(devices).into_response(),
         Err(e) => Json(e.to_string()).into_response(),
     }
 }

@@ -26,10 +26,10 @@ impl TryFrom<Context> for Reader {
 
     fn try_from(ctx: Context) -> Result<Self, Self::Error> {
         for reader in ctx.list_readers_owned()? {
-            if let Ok(name) = reader.to_str() {
-                if name.contains("PICC") {
-                    return Ok(Reader::new(ctx, reader));
-                }
+            if let Ok(name) = reader.to_str()
+                && name.contains("PICC")
+            {
+                return Ok(Reader::new(ctx, reader));
             }
         }
 
@@ -64,9 +64,15 @@ impl Reader {
                     // Empty record
                     [3, 4, b'\xD8', 0, 0, 0, ..] => Ok(Some(String::new())),
                     // URI record (single or the first of multiple)
-                    [3, record_length, b'\xD1' | b'\x91', 1, uri_length, b'\x55', prefix]
-                        if *record_length >= 4 && *uri_length > 0 =>
-                    {
+                    [
+                        3,
+                        record_length,
+                        b'\xD1' | b'\x91',
+                        1,
+                        uri_length,
+                        b'\x55',
+                        prefix,
+                    ] if *record_length >= 4 && *uri_length > 0 => {
                         let mut bytes_read = record.len();
                         let mut remaining = *uri_length - 1;
                         let mut command = [

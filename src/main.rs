@@ -71,13 +71,9 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
             oauth,
             arguments.address,
             screen,
-            client.clone()
+            client.clone(),
         ));
-        group.spawn(player::run(
-            receiver,
-            client,
-            arguments.device,
-        ));
+        group.spawn(player::run(receiver, client, arguments.device));
         group.spawn_blocking(|| read_loop(sender));
 
         while let Some(join_result) = group.join_next().await {
