@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2.7.8
+      - uses: Swatinem/rust-cache@v2.8.0
       - name: Lint
         run: cargo clippy --all-features
       - name: Format
