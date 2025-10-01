@@ -12,7 +12,6 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::sync::watch::{Receiver, Sender};
-use tower_http::services::{ServeDir, ServeFile};
 
 #[derive(Deserialize)]
 struct Input {
@@ -62,15 +61,16 @@ pub async fn run(
     client: spotify::Client,
 ) -> anyhow::Result<()> {
     let listener = TcpListener::bind(address.as_str()).await?;
-    let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/404.html"));
     let app = axum::Router::new()
+        .route("/", get(index))
+        .route("/index.html", get(index))
         .route("/logs", get(logs))
         .route("/play", post(play).put(play))
         .route("/login", get(login))
         .route("/callback", get(callback))
         .route("/devices", get(devices))
         .route("/authorization", get(authorization))
-        .fallback_service(serve_dir)
+        .fallback(not_found)
         .with_state(PlayerState::new(sender, receiver, oauth, screen, client));
 
     tracing::debug!(%address, "listening to HTTP requests");
@@ -147,4 +147,12 @@ async fn callback(
     }
 
     Redirect::to("/")
+}
+
+async fn index() -> Html<&'static str> {
+    Html(include_str!("../public/index.html"))
+}
+
+async fn not_found() -> Html<&'static str> {
+    Html(include_str!("../public/404.html"))
 }
