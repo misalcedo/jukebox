@@ -1,0 +1,51 @@
+#! /bin/bash
+
+cargo install --path "$PWD"
+
+LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
+FILENAME="cc.salcedo.Jukebox.agent.plist"
+
+AGENT_PLIST="${LAUNCH_AGENTS:?}/$FILENAME"
+
+rm -fr AGENT_PLIST
+
+cat > "$AGENT_PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>cc.salcedo.Jukebox</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$HOME/.cargo/bin/jukebox</string>
+        <string>--client-id</string>
+        <string>$JUKEBOX_CLIENT_ID</string>
+        <string>--token-cache</string>
+        <string>${JUKEBOX_TOKEN_CACHE-$HOME/.jukebox}</string>
+        <string>--market</string>
+        <string>${JUKEBOX_MARKET-US}</string>
+        <string>--device</string>
+        <string>${JUKEBOX_DEVICE-$(/usr/sbin/scutil --get ComputerName)}</string>
+        <string>--address</string>
+        <string>0.0.0.0:80</string>
+    </array>
+    <key>KeepAlive</key>
+    <true/>
+    <key>Sockets</key>
+    <dict>
+        <key>Listeners</key>
+        <dict>
+            <key>SockServiceName</key>
+            <string>http</string>
+            <key>SockType</key>
+            <string>stream</string>
+            <key>SockFamily</key>
+            <string>IPv4</string>
+        </dict>
+    </dict>
+</dict>
+</plist>
+EOF
+
+echo "Wrote agent.plist to $AGENT_PLIST"
