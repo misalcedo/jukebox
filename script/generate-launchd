@@ -28,7 +28,7 @@ cat > "$AGENT_PLIST" <<EOF
         <string>--device</string>
         <string>${JUKEBOX_DEVICE-$(/usr/sbin/scutil --get ComputerName)}</string>
         <string>--address</string>
-        <string>0.0.0.0:80</string>
+        <string>0.0.0.0:5853</string>
     </array>
     <key>KeepAlive</key>
     <true/>
@@ -37,7 +37,7 @@ cat > "$AGENT_PLIST" <<EOF
         <key>Listeners</key>
         <dict>
             <key>SockServiceName</key>
-            <string>http</string>
+            <string>5953</string>
             <key>SockType</key>
             <string>stream</string>
             <key>SockFamily</key>
