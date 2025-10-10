@@ -1,198 +1,121 @@
-use crate::spotify::models::{Album, DeviceList, Playlist, StartPlaybackRequest, Track};
-use crate::token;
-use reqwest::Result;
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
-use std::str::FromStr;
-use url::Url;
-
+mod client;
 pub mod models;
+mod uri;
+pub mod playable;
 
-#[derive(Debug, Clone)]
-pub struct Uri {
-    pub category: String,
-    pub id: String,
+use anyhow::anyhow;
+use rand::prelude::SliceRandom;
+use reqwest::StatusCode;
+
+use crate::progress::SongTracker;
+use crate::spotify::models::StartPlaybackRequest;
+pub use playable::Playable;
+pub use crate::spotify::client::Client;
+use crate::spotify::uri::Uri;
+
+pub struct Player {
+    client: Client,
+    preferred_device: Option<String>,
+    device_id: Option<String>,
+    last: Option<String>,
+    tracker: SongTracker,
 }
 
-impl Display for Uri {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "spotify:{}:{}", self.category, self.id)
+impl Player {
+    pub fn new(client: Client, preferred_device: Option<String>) -> Self {
+        Self {
+            client,
+            preferred_device,
+            device_id: None,
+            last: None,
+            tracker: SongTracker::default(),
+        }
     }
-}
 
-impl PartialEq<str> for Uri {
-    fn eq(&self, other: &str) -> bool {
-        let Some(("spotify", parts)) = other.split_once(":") else {
-            return false;
-        };
-        let Some((category, id)) = parts.split_once(":") else {
-            return false;
-        };
+    pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
+        if self.preferred_device.is_some() && self.device_id.is_none() {
+            let preferred_device_name = self.preferred_device.clone().unwrap_or_default();
+            self.device_id = Some(self.preferred_device_id(preferred_device_name).await?);
+        }
 
-        self.category == category && self.id == id
-    }
-}
+        let playable = self.resolve_uri(&uri).await?;
+        let mut songs = playable.songs();
 
-#[derive(Debug)]
-pub struct UriParseError;
+        if songs.is_empty() {
+            return Err(anyhow!("No songs to play"));
+        }
 
-impl Display for UriParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "invalid URI")
-    }
-}
-
-impl Error for UriParseError {}
-
-impl FromStr for Uri {
-    type Err = UriParseError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s.split_once(":") {
-            Some(("spotify", parts)) => {
-                let (category, id) = parts.split_once(":").ok_or(UriParseError)?;
-
-                Ok(Uri {
-                    category: category.to_string(),
-                    id: id.to_string(),
-                })
-            }
-            Some(("https", _)) => {
-                let url = Url::parse(s).map_err(|_| UriParseError)?;
-                let mut path = url.path_segments().into_iter().flatten();
-
-                match (path.next(), path.next()) {
-                    (Some(category), Some(id)) => Ok(Uri {
-                        category: category.to_string(),
-                        id: id.to_string(),
-                    }),
-                    _ => Err(UriParseError),
+        if self.last.as_deref() == Some(playable.uri()) && self.tracker.has_next() {
+            match self.client.skip_to_next(None).await {
+                Ok(_) => {
+                    self.tracker.start();
+                    return Ok(());
                 }
+                Err(e) if not_supported(e.status()) => {
+                    tracing::warn!(%e, "Failed to skip song, shuffling instead");
+                    // fall through to still play the song instead of skipping
+                }
+                Err(e) => return Err(anyhow::anyhow!(e)),
             }
-            _ => Err(UriParseError),
+        }
+
+        songs.shuffle(&mut rand::rng());
+
+        let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
+        let request = StartPlaybackRequest::from(uris);
+
+        self.client.play(self.device_id.clone(), &request).await?;
+        self.last = Some(playable.uri().to_string());
+        // TODO: move tracker to the parent player so it knows which player to pause.
+        self.tracker.reset(songs);
+
+        Ok(())
+    }
+
+    pub async fn pause(&mut self) -> anyhow::Result<()> {
+        if let Err(e) = self.client.pause(None).await {
+            // Song may not be playing.
+            if not_supported(e.status()) {
+                return Ok(());
+            }
+
+            return Err(anyhow::anyhow!(e));
+        };
+
+        self.tracker.pause();
+
+        Ok(())
+    }
+
+    async fn resolve_uri(&mut self, uri: &str) -> anyhow::Result<Playable> {
+        let uri: Uri = uri.parse()?;
+
+        match uri.category.as_str() {
+            "track" => Ok(Playable::Track(self.client.get_track(&uri.id).await?)),
+            "playlist" => Ok(Playable::Playlist(self.client.get_playlist(&uri.id).await?)),
+            "album" => Ok(Playable::Album(self.client.get_album(&uri.id).await?)),
+            _ => Err(anyhow!("Unsupported URI category")),
+        }
+    }
+
+    async fn preferred_device_id(&mut self, preferred_device: String) -> anyhow::Result<String> {
+        match self
+            .client
+            .get_available_devices()
+            .await?
+            .devices
+            .into_iter()
+            .find(|device| device.name == preferred_device)
+        {
+            None => Err(anyhow!(
+                "Found no matching device for {:?}",
+                preferred_device
+            )),
+            Some(device) => Ok(device.id),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct Client {
-    oauth: token::Client,
-    http: reqwest::Client,
-    market: String,
-}
-
-impl Client {
-    pub fn new(oauth: token::Client, market: String) -> Client {
-        let http = reqwest::Client::new();
-
-        Client {
-            oauth,
-            http,
-            market,
-        }
-    }
-
-    pub async fn get_available_devices(&mut self) -> Result<DeviceList> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .get("https://api.spotify.com/v1/me/player/devices")
-            .header("Authorization", token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await
-    }
-
-    pub async fn play(
-        &mut self,
-        device_id: Option<String>,
-        request: &StartPlaybackRequest,
-    ) -> Result<()> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .put("https://api.spotify.com/v1/me/player/play")
-            .query(&device_id.map(|id| [("device_id", id)]))
-            .header("Authorization", token)
-            .json(request)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
-    pub async fn pause(&mut self, device_id: Option<String>) -> Result<()> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .put("https://api.spotify.com/v1/me/player/pause")
-            .query(&device_id.map(|id| [("device_id", id)]))
-            .header("Authorization", token)
-            .header("Content-Length", 0)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
-    pub async fn skip_to_next(&mut self, device_id: Option<String>) -> Result<()> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .post("https://api.spotify.com/v1/me/player/next")
-            .query(&device_id.map(|id| [("device_id", id)]))
-            .header("Authorization", token)
-            .header("Content-Length", 0)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
-    pub async fn get_track(&mut self, id: &str) -> Result<Track> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .get(format!("https://api.spotify.com/v1/tracks/{}", id))
-            .query(&[("market", self.market.as_str())])
-            .header("Authorization", token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await
-    }
-
-    pub async fn get_album(&mut self, id: &str) -> Result<Album> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .get(format!("https://api.spotify.com/v1/albums/{}", id))
-            .query(&[("market", self.market.as_str())])
-            .header("Authorization", token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await
-    }
-
-    pub async fn get_playlist(&mut self, id: &str) -> Result<Playlist> {
-        let token = self.oauth.authorization().await.unwrap_or_default();
-
-        self.http
-            .get(format!("https://api.spotify.com/v1/playlists/{}", id))
-            .query(&[("market", self.market.as_str())])
-            .header("Authorization", token)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await
-    }
+fn not_supported(status: Option<StatusCode>) -> bool {
+    status == Some(StatusCode::NOT_FOUND) || status == Some(StatusCode::FORBIDDEN)
 }

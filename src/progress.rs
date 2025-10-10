@@ -1,4 +1,4 @@
-use crate::player::playable::Song;
+use crate::spotify::playable::Song;
 use std::time::Instant;
 
 #[derive(Default)]

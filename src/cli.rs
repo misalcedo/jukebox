@@ -21,4 +21,7 @@ pub struct Arguments {
 
     #[arg(short, long, env = "JUKEBOX_ADDRESS")]
     pub address: String,
+
+    #[arg(short, long, env = "JUKEBOX_LOCAL_MUSIC_PATH")]
+    pub local_music_path: PathBuf,
 }

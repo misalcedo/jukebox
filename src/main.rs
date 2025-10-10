@@ -1,10 +1,12 @@
 mod card;
 mod cli;
 mod console;
+mod local;
 mod player;
 mod spotify;
 mod token;
 mod web;
+mod progress;
 
 use crate::card::Reader;
 use crate::cli::Arguments;
@@ -64,6 +66,11 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
         let mut group = tokio::task::JoinSet::new();
         let oauth = token::Client::new(arguments.client_id, arguments.token_cache);
         let client = spotify::Client::new(oauth.clone(), arguments.market);
+        let stream_player = spotify::Player::new(client.clone(), arguments.device);
+        let file_player = local::Player::new(arguments.local_music_path);
+
+        // Construct a local task set that can run `!Send` futures.
+        let local = tokio::task::LocalSet::new();
 
         group.spawn(web::run(
             sender.clone(),
@@ -73,11 +80,13 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
             screen,
             client.clone(),
         ));
-        group.spawn(player::run(receiver, client, arguments.device));
+
+        group.spawn_local_on(player::run(receiver, stream_player, file_player), &local);
         group.spawn_blocking(|| read_loop(sender));
 
-        while let Some(join_result) = group.join_next().await {
-            join_result??
+        while let Some(join_result) = local.run_until(group.join_next()).await {
+            // TODO: uncomment to fail without NFC reader
+            // join_result??
         }
 
         Ok(())
