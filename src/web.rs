@@ -5,7 +5,7 @@ use axum::extract::{Form, Query, State};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Json, serve};
-use axum_extra::extract::Host;
+use axum_extra::extract::{Host, Scheme};
 use oauth2::PkceCodeVerifier;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -108,8 +108,8 @@ async fn authorization(State(mut state): State<PlayerState>) -> Json<String> {
     }
 }
 
-async fn login(Host(host): Host, State(state): State<PlayerState>) -> impl IntoResponse {
-    let redirect_url = format!("http://{host}/callback");
+async fn login(Scheme(scheme): Scheme, Host(host): Host, State(state): State<PlayerState>) -> impl IntoResponse {
+    let redirect_url = format!("{scheme}://{host}/callback");
     match state.oauth.login(redirect_url).await {
         Ok((authorization_url, code_verifier)) => {
             let mut guard = state.code_verifier.lock().await;
