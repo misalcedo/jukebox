@@ -124,15 +124,16 @@ async fn login(Scheme(scheme): Scheme, Host(host): Host, State(state): State<Pla
 }
 
 async fn callback(
-    Query(params): Query<CallbackParameters>,
+    Scheme(scheme): Scheme,
     Host(host): Host,
+    Query(params): Query<CallbackParameters>,
     State(state): State<PlayerState>,
 ) -> impl IntoResponse {
     let mut guard = state.code_verifier.lock().await;
 
     match guard.take() {
         Some(code_verifier) => {
-            let redirect_url = format!("http://{host}/callback");
+            let redirect_url = format!("{scheme}://{host}/callback");
             if let Err(e) = state
                 .oauth
                 .authorize(code_verifier, params.code, redirect_url)
