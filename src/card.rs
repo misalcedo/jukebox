@@ -3,8 +3,11 @@ use pcsc::{Card, Context, ReaderState, State};
 use std::ffi::CString;
 use std::time::Duration;
 
-// The URI prefix for NFC tags.
+// The HTTPS URI prefix for NFC tags.
 const HTTPS_PREFIX: &[u8] = b"https://";
+
+// The file URI prefix for NFC tags.
+const FILE_PREFIX: &[u8] = b"file://";
 
 // SW1 and SW2 for a successful operation.
 const SUCCESS: &[u8; 2] = b"\x90\x00";
@@ -83,9 +86,9 @@ impl Reader {
                             MAX_READ_BYTES,
                         ];
 
-                        tracing::debug!(?prefix, "URI prefix");
                         let uri_prefix = match prefix {
                             b'\x04' => HTTPS_PREFIX,
+                            b'\x1D' => FILE_PREFIX,
                             _ => b"",
                         };
 
