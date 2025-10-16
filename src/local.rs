@@ -2,6 +2,9 @@ use rodio::{source::Source, Decoder, OutputStream};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Component, Path, PathBuf};
+use std::time::Duration;
+use rand::prelude::SliceRandom;
+use walkdir::WalkDir;
 
 pub struct Player {
     base_path: PathBuf,
@@ -14,8 +17,6 @@ impl Player {
     }
 
     pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
-        // TODO: implement full directory playback.
-
         // Strip the scheme and root path from the URI.
         // This forces the URI to be a relative path.
         let Some(file_path) = uri.strip_prefix("file:///") else {
@@ -23,28 +24,52 @@ impl Player {
         };
 
         let joined_path = normalize_path(self.base_path.join(file_path));
-        anyhow::ensure!(joined_path.starts_with(&self.base_path), "Invalid file path: {}", joined_path.display());
-        let file = BufReader::new(File::open(joined_path)?);
+        if !joined_path.starts_with(&self.base_path) {
+            return Err(anyhow::anyhow!("Invalid file path: {}", joined_path.display()));
+        }
+
+        let mut songs = Vec::new();
+        for entry in WalkDir::new(&joined_path) {
+            let dir_entry = entry?;
+            if dir_entry.file_type().is_file() {
+                songs.push(dir_entry.into_path());
+            }
+        }
+
+        tracing::debug!(?songs, "Playing songs from {}", joined_path.display());
+
+        if songs.is_empty() {
+            return Ok(());
+        }
+
+        // Shuffle the songs to get a different order each time.
+        songs.shuffle(&mut rand::rng());
 
         // Get an output stream handle to the default physical sound device.
-        // Note that the playback stops when the stream_handle is dropped.//!
-        // TODO: need to work out how to keep the stream handle alive despite not being send.
+        // Note that the playback stops when the stream_handle is dropped.
         let stream_handle =
             rodio::OutputStreamBuilder::open_default_stream()?;
-        // Load a sound from a file and decode that sound file into a source
-        let source = Decoder::try_from(file)?;
 
-        // TODO: use duration to play the entire directory.
-        let duration = source.total_duration().unwrap_or_default();
+        let mut delay = Duration::default();
 
-        // Play the sound directly on the device
-        stream_handle.mixer().add(source);
+        for path in songs {
+            let file = BufReader::new(File::open(&path)?);
+
+            // Load a sound from a file and decode that sound file into a source
+            let source = Decoder::try_from(file)?;
+            let duration = source.total_duration().unwrap_or_default();
+
+            tracing::debug!("Playing {} for {} seconds", path.display(), duration.as_secs());
+
+            // Play the sound directly on the device, multiple sources will overlap.
+            stream_handle.mixer().add(source.delay(delay));
+
+            delay += duration;
+        }
 
         // The sound plays in a separate audio thread,
         // so we need to keep the main thread alive while it's playing.
         self.output_stream = Some(stream_handle);
-
-        tracing::debug!("Playing {} for {} seconds", uri, duration.as_secs());
 
         Ok(())
     }

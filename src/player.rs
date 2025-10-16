@@ -36,6 +36,7 @@ impl Player {
     }
 
     pub async fn pause(&mut self) -> anyhow::Result<()> {
+        // TODO: use last in order to only pause the matching player
         match tokio::join!(self.file.pause(), self.stream.pause()) {
             (Ok(()), Ok(())) => Ok(()),
             (Err(e1), Err(e2)) => anyhow::bail!("Failed to pause playback: {} {}", e1, e2),
