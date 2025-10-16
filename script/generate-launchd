@@ -29,6 +29,8 @@ cat > "$AGENT_PLIST" <<EOF
         <string>${JUKEBOX_DEVICE-$(/usr/sbin/scutil --get ComputerName)}</string>
         <string>--address</string>
         <string>0.0.0.0:5853</string>
+        <string>--local-music-path</string>
+        <string>${JUKEBOX_LOCAL_MUSIC_PATH-$HOME/Music}</string>
     </array>
     <key>KeepAlive</key>
     <true/>
