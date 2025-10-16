@@ -63,6 +63,16 @@ impl Player {
         Ok(())
     }
 
+    pub async fn skip(&mut self) -> anyhow::Result<bool> {
+        if let Some((_, sink)) = self.audio.as_mut() {
+            sink.skip_one();
+            sink.play();
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     pub async fn pause(&mut self) -> anyhow::Result<()> {
         if let Some((_, sink)) = self.audio.as_mut() {
             sink.pause();

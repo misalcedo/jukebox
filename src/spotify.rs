@@ -72,6 +72,24 @@ impl Player {
         Ok(())
     }
 
+    pub async fn skip(&mut self) -> anyhow::Result<bool> {
+        if self.tracker.has_next() {
+            match self.client.skip_to_next(None).await {
+                Ok(_) => {
+                    self.tracker.start();
+                    Ok(true)
+                }
+                Err(e) if not_supported(e.status()) => {
+                    tracing::warn!(%e, "Failed to skip song, shuffling instead");
+                    Ok(false)
+                }
+                Err(e) => Err(anyhow::anyhow!(e)),
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
     pub async fn pause(&mut self) -> anyhow::Result<()> {
         if let Err(e) = self.client.pause(None).await {
             // Song may not be playing.
