@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 ansi-to-html = { version = "0.2.2" }
 anyhow = { version = "1.0.99" }
-axum = { version = "0.8.4" }
+axum = { version = "0.8.6" }
 axum-extra = { version = "0.10.1", features = ["scheme"] }
 clap = { version = "4.5.49", features = ["derive", "env"] }
 oauth2 = { version = "5.0.0", features = ["reqwest"] }
