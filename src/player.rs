@@ -37,6 +37,7 @@ impl Player {
     }
 
     async fn skip(&mut self, input: &str) -> anyhow::Result<bool> {
+        tracing::debug!(%input, "Playing next song");
         let uri = Url::parse(input)?;
         match uri.scheme() {
             "https" if uri.host_str() == Some("open.spotify.com") =>self.stream.skip().await,
@@ -47,6 +48,7 @@ impl Player {
     }
 
     async fn play_uri(&mut self, input: String) -> anyhow::Result<Vec<Duration>> {
+        tracing::debug!(%input, "Playing URI");
         let uri = Url::parse(&input)?;
         match uri.scheme() {
             "https" if uri.host_str() == Some("open.spotify.com") =>self.stream.play(input).await,
@@ -57,6 +59,7 @@ impl Player {
     }
 
     pub async fn pause(&mut self) -> anyhow::Result<()> {
+        tracing::debug!("Pausing playback");
         match self.last.as_ref() {
             Some(last) => {
                 let uri = Url::parse(last)?;
