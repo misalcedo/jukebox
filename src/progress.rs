@@ -1,9 +1,8 @@
-use crate::player::playable::Song;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Default)]
 pub struct SongTracker {
-    songs: Vec<Song>,
+    songs: Vec<Duration>,
     start: Option<Instant>,
     index: usize,
 }
@@ -19,8 +18,8 @@ impl SongTracker {
         if let Some(instant) = self.start.take() {
             let mut remaining = instant.elapsed();
 
-            while let Some(song) = self.songs.get(self.index) {
-                match remaining.checked_sub(song.duration) {
+            while let Some(duration) = self.songs.get(self.index) {
+                match remaining.checked_sub(*duration) {
                     Some(difference) => {
                         self.index += 1;
                         remaining = difference;
@@ -33,7 +32,7 @@ impl SongTracker {
         }
     }
 
-    pub fn reset(&mut self, songs: Vec<Song>) {
+    pub fn reset(&mut self, songs: Vec<Duration>) {
         self.songs = songs;
         self.start = Some(Instant::now());
         self.index = 0;

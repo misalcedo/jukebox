@@ -1,125 +1,91 @@
-use crate::spotify;
-use anyhow::anyhow;
-use rand::prelude::SliceRandom;
-use reqwest::StatusCode;
+use std::time::Duration;
 use tokio::sync::watch::Receiver;
-
-mod playable;
-mod progress;
-
-use crate::player::progress::SongTracker;
-use crate::spotify::Uri;
-use crate::spotify::models::StartPlaybackRequest;
-pub use playable::Playable;
+use url::Url;
+use crate::{local, spotify};
+use crate::progress::SongTracker;
 
 pub struct Player {
-    client: spotify::Client,
-    preferred_device: Option<String>,
-    device_id: Option<String>,
+    stream: spotify::Player,
+    file: local::Player,
     last: Option<String>,
     tracker: SongTracker,
 }
 
 impl Player {
-    fn new(client: spotify::Client, preferred_device: Option<String>) -> Self {
+    fn new(stream: spotify::Player, file: local::Player) -> Self {
         Self {
-            client,
-            preferred_device,
-            device_id: None,
+            stream,
+            file,
             last: None,
-            tracker: SongTracker::default(),
+            tracker: SongTracker::default()
         }
     }
 
-    pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
-        if self.preferred_device.is_some() && self.device_id.is_none() {
-            let preferred_device_name = self.preferred_device.clone().unwrap_or_default();
-            self.device_id = Some(self.preferred_device_id(preferred_device_name).await?);
-        }
-
-        let playable = self.resolve_uri(&uri).await?;
-        let mut songs = playable.songs();
-
-        if songs.is_empty() {
-            return Err(anyhow!("No songs to play"));
-        }
-
-        if self.last.as_deref() == Some(playable.uri()) && self.tracker.has_next() {
-            match self.client.skip_to_next(None).await {
-                Ok(_) => {
-                    self.tracker.start();
-                    return Ok(());
-                }
-                Err(e) if not_supported(e.status()) => {
-                    tracing::warn!(%e, "Failed to skip song, shuffling instead");
-                    // fall through to still play the song instead of skipping
-                }
-                Err(e) => return Err(anyhow::anyhow!(e)),
+    pub async fn play(&mut self, input: String) -> anyhow::Result<()> {
+        if self.last.as_ref() == Some(&input) && self.tracker.has_next() {
+            if self.skip(&input).await? {
+                self.tracker.start();
+                return Ok(());
             }
         }
 
-        songs.shuffle(&mut rand::rng());
+       let songs = self.play_uri(input.clone()).await?;
 
-        let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
-        let request = StartPlaybackRequest::from(uris);
-
-        self.client.play(self.device_id.clone(), &request).await?;
-        self.last = Some(playable.uri().to_string());
+        self.last = Some(input);
         self.tracker.reset(songs);
-
         Ok(())
+    }
+
+    async fn skip(&mut self, input: &str) -> anyhow::Result<bool> {
+        tracing::debug!(%input, "Playing next song");
+        let uri = Url::parse(input)?;
+        match uri.scheme() {
+            "https" if uri.host_str() == Some("open.spotify.com") =>self.stream.skip().await,
+            "spotify" => self.stream.skip().await,
+            "file" => self.file.skip().await,
+            _ => anyhow::bail!("Unknown scheme: {}", uri.scheme()),
+        }
+    }
+
+    async fn play_uri(&mut self, input: String) -> anyhow::Result<Vec<Duration>> {
+        tracing::debug!(%input, "Playing URI");
+        let uri = Url::parse(&input)?;
+        match uri.scheme() {
+            "https" if uri.host_str() == Some("open.spotify.com") =>self.stream.play(input).await,
+            "spotify" => self.stream.play(input).await,
+            "file" => self.file.play(input).await,
+            _ => anyhow::bail!("Unknown scheme: {}", uri.scheme()),
+        }
     }
 
     pub async fn pause(&mut self) -> anyhow::Result<()> {
-        if let Err(e) = self.client.pause(None).await {
-            // Song may not be playing.
-            if not_supported(e.status()) {
-                return Ok(());
+        tracing::debug!("Pausing playback");
+        match self.last.as_ref() {
+            Some(last) => {
+                let uri = Url::parse(last)?;
+                match uri.scheme() {
+                    "https" if uri.host_str() == Some("open.spotify.com") => self.stream.pause().await?,
+                    "spotify" => self.stream.pause().await?,
+                    "file" => self.file.pause().await?,
+                    _ => anyhow::bail!("Unknown scheme: {}", uri.scheme()),
+                }
+
+                self.tracker.pause();
+                Ok(())
             }
-
-            return Err(anyhow::anyhow!(e));
-        };
-
-        self.tracker.pause();
-
-        Ok(())
-    }
-
-    async fn resolve_uri(&mut self, uri: &str) -> anyhow::Result<Playable> {
-        let uri: Uri = uri.parse()?;
-
-        match uri.category.as_str() {
-            "track" => Ok(Playable::Track(self.client.get_track(&uri.id).await?)),
-            "playlist" => Ok(Playable::Playlist(self.client.get_playlist(&uri.id).await?)),
-            "album" => Ok(Playable::Album(self.client.get_album(&uri.id).await?)),
-            _ => Err(anyhow!("Unsupported URI category")),
-        }
-    }
-
-    async fn preferred_device_id(&mut self, preferred_device: String) -> anyhow::Result<String> {
-        match self
-            .client
-            .get_available_devices()
-            .await?
-            .devices
-            .into_iter()
-            .find(|device| device.name == preferred_device)
-        {
-            None => Err(anyhow!(
-                "Found no matching device for {:?}",
-                preferred_device
-            )),
-            Some(device) => Ok(device.id),
+            None => {
+                anyhow::bail!("Missing last url field");
+            }
         }
     }
 }
 
 pub async fn run(
     mut receiver: Receiver<Option<String>>,
-    client: spotify::Client,
-    preferred_device: Option<String>,
+    stream: spotify::Player,
+    file: local::Player,
 ) -> anyhow::Result<()> {
-    let mut player = Player::new(client, preferred_device);
+    let mut player = Player::new(stream, file);
 
     loop {
         receiver.changed().await?;
@@ -141,8 +107,4 @@ pub async fn run(
             }
         };
     }
-}
-
-fn not_supported(status: Option<StatusCode>) -> bool {
-    status == Some(StatusCode::NOT_FOUND) || status == Some(StatusCode::FORBIDDEN)
 }
