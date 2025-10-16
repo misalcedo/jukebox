@@ -85,8 +85,7 @@ fn run(arguments: Arguments, screen: Screen) -> anyhow::Result<()> {
         group.spawn_blocking(|| read_loop(sender));
 
         while let Some(join_result) = local.run_until(group.join_next()).await {
-            // TODO: uncomment to fail without NFC reader
-            // join_result??
+            join_result??
         }
 
         Ok(())
