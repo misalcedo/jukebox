@@ -39,3 +39,6 @@ cat > "$AGENT_PLIST" <<EOF
 EOF
 
 echo "Wrote agent.plist to $AGENT_PLIST"
+echo "Restarting agent..."
+
+launchctl kickstart -k gui/$(id -u)/cc.salcedo.Jukebox
