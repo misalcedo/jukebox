@@ -83,6 +83,7 @@ impl Reader {
                             MAX_READ_BYTES,
                         ];
 
+                        tracing::debug!(?prefix, "URI prefix");
                         let uri_prefix = match prefix {
                             b'\x04' => HTTPS_PREFIX,
                             _ => b"",
