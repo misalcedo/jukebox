@@ -14,14 +14,6 @@ pub struct Song {
 }
 
 impl Playable {
-    pub fn uri(&self) -> &str {
-        match self {
-            Playable::Track(track) => &track.uri,
-            Playable::Playlist(playlist) => &playlist.uri,
-            Playable::Album(album) => &album.uri,
-        }
-    }
-
     pub fn songs(&self) -> Vec<Song> {
         let mut songs = Vec::new();
 

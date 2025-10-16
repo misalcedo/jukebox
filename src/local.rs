@@ -1,7 +1,8 @@
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Component, Path, PathBuf};
+use std::time::Duration;
 use rand::prelude::SliceRandom;
 use walkdir::WalkDir;
 
@@ -15,7 +16,7 @@ impl Player {
         Self { base_path, audio: None }
     }
 
-    pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
+    pub async fn play(&mut self, uri: String) -> anyhow::Result<Vec<Duration>> {
         // Strip the scheme and root path from the URI.
         // This forces the URI to be a relative path.
         let Some(file_path) = uri.strip_prefix("file:///") else {
@@ -38,7 +39,7 @@ impl Player {
         tracing::debug!(?songs, "Playing songs from {}", joined_path.display());
 
         if songs.is_empty() {
-            return Ok(());
+            return Ok(Vec::new());
         }
 
         // Shuffle the songs to get a different order each time.
@@ -50,9 +51,11 @@ impl Player {
             OutputStreamBuilder::open_default_stream()?;
         let sink = Sink::connect_new(stream_handle.mixer());
 
+        let mut durations = Vec::with_capacity(songs.len());
         for path in songs {
             let file = BufReader::new(File::open(&path)?);
             let source = Decoder::try_from(file)?;
+            durations.push(source.total_duration().unwrap_or(Duration::ZERO));
             sink.append(source);
         }
 
@@ -60,7 +63,7 @@ impl Player {
         // so we need to keep the main thread alive while it's playing.
         self.audio = Some((stream_handle, sink));
 
-        Ok(())
+        Ok(durations)
     }
 
     pub async fn skip(&mut self) -> anyhow::Result<bool> {

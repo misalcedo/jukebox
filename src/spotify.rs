@@ -3,11 +3,11 @@ pub mod models;
 mod uri;
 pub mod playable;
 
+use std::time::Duration;
 use anyhow::anyhow;
 use rand::prelude::SliceRandom;
 use reqwest::StatusCode;
 
-use crate::progress::SongTracker;
 use crate::spotify::models::StartPlaybackRequest;
 pub use playable::Playable;
 pub use crate::spotify::client::Client;
@@ -17,8 +17,6 @@ pub struct Player {
     client: Client,
     preferred_device: Option<String>,
     device_id: Option<String>,
-    last: Option<String>,
-    tracker: SongTracker,
 }
 
 impl Player {
@@ -27,12 +25,10 @@ impl Player {
             client,
             preferred_device,
             device_id: None,
-            last: None,
-            tracker: SongTracker::default(),
         }
     }
 
-    pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
+    pub async fn play(&mut self, uri: String) -> anyhow::Result<Vec<Duration>> {
         if self.preferred_device.is_some() && self.device_id.is_none() {
             let preferred_device_name = self.preferred_device.clone().unwrap_or_default();
             self.device_id = Some(self.preferred_device_id(preferred_device_name).await?);
@@ -45,48 +41,26 @@ impl Player {
             return Err(anyhow!("No songs to play"));
         }
 
-        if self.last.as_deref() == Some(playable.uri()) && self.tracker.has_next() {
-            match self.client.skip_to_next(None).await {
-                Ok(_) => {
-                    self.tracker.start();
-                    return Ok(());
-                }
-                Err(e) if not_supported(e.status()) => {
-                    tracing::warn!(%e, "Failed to skip song, shuffling instead");
-                    // fall through to still play the song instead of skipping
-                }
-                Err(e) => return Err(anyhow::anyhow!(e)),
-            }
-        }
-
         songs.shuffle(&mut rand::rng());
 
         let uris: Vec<String> = songs.iter().map(|song| song.uri.clone()).collect();
         let request = StartPlaybackRequest::from(uris);
 
         self.client.play(self.device_id.clone(), &request).await?;
-        self.last = Some(playable.uri().to_string());
-        // TODO: move tracker to the parent player so it knows which player to pause.
-        self.tracker.reset(songs);
 
-        Ok(())
+        Ok(songs.iter().map(|song| song.duration).collect())
     }
 
     pub async fn skip(&mut self) -> anyhow::Result<bool> {
-        if self.tracker.has_next() {
-            match self.client.skip_to_next(None).await {
-                Ok(_) => {
-                    self.tracker.start();
-                    Ok(true)
-                }
-                Err(e) if not_supported(e.status()) => {
-                    tracing::warn!(%e, "Failed to skip song, shuffling instead");
-                    Ok(false)
-                }
-                Err(e) => Err(anyhow::anyhow!(e)),
+        match self.client.skip_to_next(None).await {
+            Ok(_) => {
+                Ok(true)
             }
-        } else {
-            Ok(false)
+            Err(e) if not_supported(e.status()) => {
+                tracing::warn!(%e, "Failed to skip song, shuffling instead");
+                Ok(false)
+            }
+            Err(e) => Err(anyhow::anyhow!(e)),
         }
     }
 
@@ -99,8 +73,6 @@ impl Player {
 
             return Err(anyhow::anyhow!(e));
         };
-
-        self.tracker.pause();
 
         Ok(())
     }

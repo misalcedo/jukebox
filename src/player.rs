@@ -1,3 +1,4 @@
+use std::time::Duration;
 use tokio::sync::watch::Receiver;
 use url::Url;
 use crate::{local, spotify};
@@ -21,11 +22,31 @@ impl Player {
     }
 
     pub async fn play(&mut self, input: String) -> anyhow::Result<()> {
-        if self.last.as_deref() == Some(&input) && self.tracker.has_next() {
-            // skip
-            self.tracker.start();
+        if self.last.as_ref() == Some(&input) && self.tracker.has_next() {
+            if self.skip(&input).await? {
+                self.tracker.start();
+                return Ok(());
+            }
         }
 
+       let songs = self.play_uri(input.clone()).await?;
+
+        self.last = Some(input);
+        self.tracker.reset(songs);
+        Ok(())
+    }
+
+    async fn skip(&mut self, input: &str) -> anyhow::Result<bool> {
+        let uri = Url::parse(input)?;
+        match uri.scheme() {
+            "https" if uri.host_str() == Some("open.spotify.com") =>self.stream.skip().await,
+            "spotify" => self.stream.skip().await,
+            "file" => self.file.skip().await,
+            _ => anyhow::bail!("Unknown scheme: {}", uri.scheme()),
+        }
+    }
+
+    async fn play_uri(&mut self, input: String) -> anyhow::Result<Vec<Duration>> {
         let uri = Url::parse(&input)?;
         match uri.scheme() {
             "https" if uri.host_str() == Some("open.spotify.com") =>self.stream.play(input).await,
@@ -36,17 +57,23 @@ impl Player {
     }
 
     pub async fn pause(&mut self) -> anyhow::Result<()> {
-        // TODO: use last in order to only pause the matching player
-        match tokio::join!(self.file.pause(), self.stream.pause()) {
-            (Ok(()), Ok(())) => Ok(()),
-            (Err(e1), Err(e2)) => anyhow::bail!("Failed to pause playback: {} {}", e1, e2),
-            (Err(e), Ok(())) => Err(e),
-            (Ok(()), Err(e)) => Err(e),
-        }?;
+        match self.last.as_ref() {
+            Some(last) => {
+                let uri = Url::parse(last)?;
+                match uri.scheme() {
+                    "https" if uri.host_str() == Some("open.spotify.com") => self.stream.pause().await?,
+                    "spotify" => self.stream.pause().await?,
+                    "file" => self.file.pause().await?,
+                    _ => anyhow::bail!("Unknown scheme: {}", uri.scheme()),
+                }
 
-        self.tracker.pause();
-
-        Ok(())
+                self.tracker.pause();
+                Ok(())
+            }
+            None => {
+                anyhow::bail!("Missing last url field");
+            }
+        }
     }
 }
 
