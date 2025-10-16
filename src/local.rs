@@ -1,19 +1,18 @@
-use rodio::{source::Source, Decoder, OutputStream};
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Component, Path, PathBuf};
-use std::time::Duration;
 use rand::prelude::SliceRandom;
 use walkdir::WalkDir;
 
 pub struct Player {
     base_path: PathBuf,
-    output_stream: Option<OutputStream>
+    audio: Option<(OutputStream, Sink)>
 }
 
 impl Player {
     pub fn new(base_path: PathBuf) -> Self {
-        Self { base_path, output_stream: None }
+        Self { base_path, audio: None }
     }
 
     pub async fn play(&mut self, uri: String) -> anyhow::Result<()> {
@@ -48,34 +47,27 @@ impl Player {
         // Get an output stream handle to the default physical sound device.
         // Note that the playback stops when the stream_handle is dropped.
         let stream_handle =
-            rodio::OutputStreamBuilder::open_default_stream()?;
-
-        let mut delay = Duration::default();
+            OutputStreamBuilder::open_default_stream()?;
+        let sink = Sink::connect_new(stream_handle.mixer());
 
         for path in songs {
             let file = BufReader::new(File::open(&path)?);
-
-            // Load a sound from a file and decode that sound file into a source
             let source = Decoder::try_from(file)?;
-            let duration = source.total_duration().unwrap_or_default();
-
-            tracing::debug!("Playing {} for {} seconds", path.display(), duration.as_secs());
-
-            // Play the sound directly on the device, multiple sources will overlap.
-            stream_handle.mixer().add(source.delay(delay));
-
-            delay += duration;
+            sink.append(source);
         }
 
         // The sound plays in a separate audio thread,
         // so we need to keep the main thread alive while it's playing.
-        self.output_stream = Some(stream_handle);
+        self.audio = Some((stream_handle, sink));
 
         Ok(())
     }
 
     pub async fn pause(&mut self) -> anyhow::Result<()> {
-        self.output_stream.take();
+        if let Some((_, sink)) = self.audio.as_mut() {
+            sink.pause();
+        }
+
         Ok(())
     }
 }
