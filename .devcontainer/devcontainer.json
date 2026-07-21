@@ -1,0 +1,12 @@
+{
+  "name": "jukebox",
+  "image": "mcr.microsoft.com/devcontainers/rust:latest",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer"
+      ]
+    }
+  }
+}
