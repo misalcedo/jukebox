@@ -33,7 +33,7 @@ This repository includes `.devcontainer/devcontainer.json` so a Codespace can bu
 The setup:
 
 1. Installs Linux system dependencies required by the Rust crates.
-2. Reads `rust-version` from `Cargo.toml` and configures the same Rust toolchain.
+2. Configures Rust `stable` as the toolchain.
 3. Pre-builds dev/test/release targets (`cargo build`, `cargo test --no-run`, `cargo build --release --bins --all-features`).
 
 ## Login
