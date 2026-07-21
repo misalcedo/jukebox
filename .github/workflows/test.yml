@@ -2,6 +2,10 @@ name: Tests
 
 on:
   pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "src/**"
   workflow_dispatch: {}
 
 permissions:
