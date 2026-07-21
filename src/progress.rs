@@ -42,3 +42,40 @@ impl SongTracker {
         self.index < self.songs.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SongTracker;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn reset_starts_tracker_with_first_song() {
+        let mut tracker = SongTracker::default();
+        tracker.reset(vec![Duration::from_secs(1)]);
+
+        assert!(tracker.start.is_some());
+        assert_eq!(tracker.index, 0);
+        assert!(tracker.has_next());
+    }
+
+    #[test]
+    fn pause_does_not_change_index_when_not_started() {
+        let mut tracker = SongTracker::default();
+        tracker.songs = vec![Duration::from_secs(5)];
+        tracker.pause();
+
+        assert_eq!(tracker.index, 0);
+        assert!(tracker.has_next());
+    }
+
+    #[test]
+    fn pause_moves_to_next_song() {
+        let mut tracker = SongTracker::default();
+        tracker.songs = vec![Duration::from_secs(60)];
+        tracker.start = Some(Instant::now());
+        tracker.pause();
+
+        assert_eq!(tracker.index, 1);
+        assert!(!tracker.has_next());
+    }
+}
