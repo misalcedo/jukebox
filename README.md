@@ -27,6 +27,15 @@ export JUKEBOX_ADDRESS="0.0.0.0:5853"
 jukebox
 ```
 
+## GitHub Codespaces
+
+This repository includes `.devcontainer/devcontainer.json` so a Codespace can build the project out of the box.
+The setup:
+
+1. Installs Linux system dependencies required by the Rust crates.
+2. Reads `rust-version` from `Cargo.toml` and configures the same Rust toolchain.
+3. Pre-builds dev/test/release targets (`cargo build`, `cargo test --no-run`, `cargo build --release --bins --all-features`).
+
 ## Login
 
 When you run the application for the first time, go to the address you configured in the `$JUKEBOX_ADDRESS` environment
