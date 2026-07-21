@@ -172,6 +172,7 @@ mod tests {
     use pcsc::ctl_code;
 
     #[test]
+    #[ignore = "requires a physical ACS ACR1252 reader"]
     fn set_led_and_buzzer() {
         let ctx = Context::establish(pcsc::Scope::User).unwrap();
         let reader = CString::new("ACS ACR1252 1S CL Reader PICC 0").unwrap();

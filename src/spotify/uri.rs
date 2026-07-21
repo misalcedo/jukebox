@@ -68,3 +68,37 @@ impl FromStr for Uri {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Uri;
+    use std::str::FromStr;
+
+    #[test]
+    fn parses_spotify_uri() {
+        let uri = Uri::from_str("spotify:track:123").unwrap();
+        assert_eq!(uri.category, "track");
+        assert_eq!(uri.id, "123");
+        assert_eq!(uri.to_string(), "spotify:track:123");
+    }
+
+    #[test]
+    fn parses_spotify_https_uri() {
+        let uri = Uri::from_str("https://open.spotify.com/playlist/abc").unwrap();
+        assert_eq!(uri.category, "playlist");
+        assert_eq!(uri.id, "abc");
+    }
+
+    #[test]
+    fn rejects_invalid_uri() {
+        assert!(Uri::from_str("https://open.spotify.com/").is_err());
+        assert!(Uri::from_str("spotify:track").is_err());
+    }
+
+    #[test]
+    fn compares_with_str_uri() {
+        let uri = Uri::from_str("spotify:album:999").unwrap();
+        assert!(uri == "spotify:album:999");
+        assert!(uri != "spotify:track:999");
+    }
+}

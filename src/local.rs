@@ -112,3 +112,21 @@ pub fn normalize_path(path: impl AsRef<Path>) -> PathBuf {
     }
     buffer
 }
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn normalize_path_removes_current_dir() {
+        let path = normalize_path("./music/./album/song.mp3");
+        assert_eq!(path, PathBuf::from("music/album/song.mp3"));
+    }
+
+    #[test]
+    fn normalize_path_resolves_parent_dir() {
+        let path = normalize_path("music/album/../song.mp3");
+        assert_eq!(path, PathBuf::from("music/song.mp3"));
+    }
+}
