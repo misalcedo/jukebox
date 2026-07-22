@@ -28,6 +28,12 @@ impl PartialEq<str> for Uri {
     }
 }
 
+impl PartialEq<&str> for Uri {
+    fn eq(&self, other: &&str) -> bool {
+        self == *other
+    }
+}
+
 #[derive(Debug)]
 pub struct UriParseError;
 
