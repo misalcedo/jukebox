@@ -1,6 +1,12 @@
 name: Tests
 
 on:
+  push:
+    branches: [ main ]
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "src/**"
   pull_request:
     paths:
       - "Cargo.toml"
