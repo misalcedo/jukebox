@@ -20,13 +20,20 @@ struct CachedToken {
 }
 
 impl CachedToken {
-    fn new(token: BasicTokenResponse, now: SystemTime) -> anyhow::Result<Self> {
+    fn new(
+        token: BasicTokenResponse,
+        now: SystemTime,
+        existing_refresh_token: Option<RefreshToken>,
+    ) -> anyhow::Result<Self> {
+        let refresh_token = token
+            .refresh_token()
+            .cloned()
+            .or(existing_refresh_token)
+            .ok_or_else(|| anyhow::anyhow!("No refresh token"))?;
+
         Ok(Self {
             access_token: token.access_token().clone(),
-            refresh_token: token
-                .refresh_token()
-                .ok_or_else(|| anyhow::anyhow!("No refresh token"))?
-                .clone(),
+            refresh_token,
             token_type: token.token_type().clone(),
             deadline: now + token.expires_in().unwrap_or_default(),
         })
@@ -92,7 +99,7 @@ impl Client {
                 .request_async(&self.http)
                 .await?;
 
-            token = CachedToken::new(response, now)?;
+            token = CachedToken::new(response, now, Some(token.refresh_token.clone()))?;
             *guard = Some(token.clone());
             save(&self.path, &token).await?;
         }
@@ -138,7 +145,7 @@ impl Client {
             .set_redirect_uri(Cow::Owned(RedirectUrl::new(redirect_url)?))
             .request_async(&self.http)
             .await?;
-        let token = CachedToken::new(response, now)?;
+        let token = CachedToken::new(response, now, None)?;
 
         save(&self.path, &token).await?;
 
